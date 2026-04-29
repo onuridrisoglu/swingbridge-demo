@@ -1,0 +1,397 @@
+@import url('https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@700;800&display=swap');
+
+/* ============================================================
+   LOGIN VIEW — Industrial Command Center
+   ============================================================ */
+
+html {
+--lumo-primary-color: #1b3a5c;
+--lumo-error-color: #a31515;
+}
+
+.login-view {
+  position: relative;
+  min-height: 100vh;
+  background:
+    radial-gradient(ellipse at 20% 10%, rgba(61, 122, 181, 0.18) 0%, transparent 55%),
+    radial-gradient(ellipse at 85% 85%, rgba(13, 27, 42, 0.9) 0%, transparent 50%),
+    linear-gradient(158deg, #0d1b2a 0%, #112236 45%, #1b3a5c 100%);
+  overflow: hidden;
+  font-family: 'Barlow', sans-serif;
+}
+
+/* Dot-grid overlay */
+.login-view::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.07) 1px, transparent 1px);
+  background-size: 30px 30px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Horizontal scanline texture */
+.login-view::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 3px,
+    rgba(0, 0, 0, 0.04) 3px,
+    rgba(0, 0, 0, 0.04) 4px
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Decorative background SVG container */
+.login-bg-deco {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.bg-rack-right {
+  position: absolute;
+  right: -10px;
+  top: 0;
+  height: 100%;
+  opacity: 0.055;
+}
+
+.bg-rack-left {
+  position: absolute;
+  left: -30px;
+  bottom: 0;
+  height: 65%;
+  opacity: 0.04;
+}
+
+.bg-boxes-top {
+  position: absolute;
+  top: 8%;
+  left: 8%;
+  opacity: 0.05;
+}
+
+/* ============================================================
+   LOGIN CARD
+   ============================================================ */
+
+.login-card {
+  position: relative;
+  z-index: 10;
+  width: 388px;
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 40px 36px 32px;
+  box-shadow:
+    0 0 0 1px rgba(27, 58, 92, 0.1),
+    0 2px 4px rgba(13, 27, 42, 0.08),
+    0 12px 28px rgba(13, 27, 42, 0.28),
+    0 32px 64px rgba(13, 27, 42, 0.18);
+  animation: card-rise 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Top accent bar */
+.login-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 36px;
+  right: 36px;
+  height: 3px;
+  background: linear-gradient(90deg, #0d1b2a 0%, #3d7ab5 50%, #0d1b2a 100%);
+  border-radius: 0 0 4px 4px;
+}
+
+@keyframes card-rise {
+  from { opacity: 0; transform: translateY(28px); }
+  to   { opacity: 1; transform: translateY(0);    }
+}
+
+/* Header row */
+.login-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 24px;
+}
+
+.login-icon-box {
+  width: 54px;
+  height: 54px;
+  background: linear-gradient(145deg, #edf3fb 0%, #d6e6f6 100%);
+  border-radius: 12px;
+  border: 1px solid rgba(27, 58, 92, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.login-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.login-title {
+  font-family: 'Barlow Condensed', sans-serif !important;
+  font-size: 1.75rem !important;
+  font-weight: 800 !important;
+  color: #0d1b2a !important;
+  margin: 0 !important;
+  line-height: 1 !important;
+  letter-spacing: -0.01em !important;
+}
+
+.login-version {
+  font-family: 'Courier New', 'Lucida Console', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  color: #7a90a8;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* Status indicator */
+.login-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 20px;
+  padding: 6px 10px;
+  background: rgba(16, 185, 129, 0.06);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  border-radius: 6px;
+  width: fit-content;
+}
+
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #10b981;
+  animation: pulse-dot 2.4s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1;   transform: scale(1);    }
+  50%       { opacity: 0.5; transform: scale(0.85); }
+}
+
+.status-text {
+  font-family: 'Courier New', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  color: #10b981;
+  letter-spacing: 0.1em;
+}
+
+/* Divider */
+.login-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, #dde6f0 30%, #dde6f0 70%, transparent 100%);
+  margin-bottom: 22px;
+}
+
+/* Footer */
+.login-footer {
+  text-align: center;
+  font-family: 'Courier New', monospace;
+  font-size: 10.5px;
+  color: #9bafc4;
+  margin: 22px 0 0 !important;
+  padding-top: 16px !important;
+  border-top: 1px solid #edf2f7;
+  letter-spacing: 0.03em;
+}
+
+/* Sign In button */
+.login-btn {
+  margin-top: 4px !important;
+  height: 42px !important;
+  font-family: 'Barlow', sans-serif !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.04em !important;
+}
+
+/* Form field accent color */
+.login-card vaadin-text-field,
+.login-card vaadin-password-field {
+  --aura-accent-color-light: #1b3a5c;
+}
+
+/* ============================================================
+   MAIN LAYOUT — navbar + drawer
+   ============================================================ */
+
+/* Navbar background */
+.main-layout::part(navbar) {
+  background: #0d1b2a;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  padding: 0;
+}
+
+/* ---- Navbar contents ---- */
+
+.main-navbar {
+  padding: 0 12px !important;
+}
+
+/* DrawerToggle: transparent bg + white icon on dark navbar */
+.main-layout vaadin-drawer-toggle::part(button) {
+  background: transparent !important;
+  color: #ffffff !important;
+  border-radius: 6px;
+  box-shadow: none !important;
+}
+
+.main-layout vaadin-drawer-toggle::part(button):hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+.nav-title {
+  font-family: 'Barlow Condensed', sans-serif !important;
+  font-size: 1.25rem !important;
+  font-weight: 700 !important;
+  color: #ffffff !important;
+  letter-spacing: 0.05em !important;
+  text-transform: uppercase !important;
+  margin: 0 !important;
+}
+
+/* User button in navbar */
+.nav-user-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.nav-user-btn:hover {
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.nav-user-btn:hover .nav-username {
+  color: #ffffff;
+}
+
+.nav-avatar {
+  --vaadin-avatar-size: 30px;
+  flex-shrink: 0;
+}
+
+.nav-user-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+}
+
+.nav-username {
+  font-family: 'Barlow', sans-serif;
+  font-size: 0.925rem;
+  font-weight: 600;
+  color: #e2eaf4;
+  line-height: 1;
+}
+
+.nav-role {
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  color: #4a7aa8;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+/* ---- Drawer header ---- */
+
+.drawer-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 18px 16px 14px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  margin-bottom: 6px;
+}
+
+.drawer-icon-box {
+  width: 36px;
+  height: 36px;
+  background: linear-gradient(145deg, #edf3fb 0%, #d6e6f6 100%);
+  border: 1px solid rgba(27, 58, 92, 0.12);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* Recolor the SVG icon for light background */
+.drawer-icon-box svg rect,
+.drawer-icon-box svg polyline {
+  stroke: #1b3a5c;
+}
+.drawer-icon-box svg rect[fill="#7eb8e8"] {
+  fill: #1b3a5c;
+  opacity: 0.5;
+}
+
+.drawer-brand-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.drawer-brand-title {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #0d1b2a;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+.drawer-brand-sub {
+  font-family: 'Courier New', monospace;
+  font-size: 9px;
+  color: #7a90a8;
+  letter-spacing: 0.1em;
+}
+
+/* ---- SideNav ---- */
+
+.main-nav {
+  padding: 0 10px;
+  width: 100%;
+  --vaadin-side-nav-item-font-size: 0.875rem;
+  --vaadin-side-nav-item-font-weight: 500;
+  --vaadin-side-nav-item-border-radius: 6px;
+  --vaadin-side-nav-items-gap: 2px;
+}
+
+.main-nav vaadin-side-nav-item::part(link) {
+  font-family: 'Barlow', sans-serif;
+  letter-spacing: 0.01em;
+}
+
+/* ============================================================
+   CONTENT AREA
+   ============================================================ */
+
+.main-layout::part(content) {
+  background: #f4f7fb;
+}
