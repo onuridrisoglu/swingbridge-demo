@@ -1,5 +1,9 @@
 package com.example.warehouse.ui.suppliers;
 
+import com.example.warehouse.bridge.SupplierEditRequestEvent;
+import com.example.warehouse.bridge.SupplierEditRequestListener;
+import com.example.warehouse.bridge.SupplierSelectedEvent;
+import com.example.warehouse.bridge.SupplierSelectionListener;
 import com.example.warehouse.model.Supplier;
 import com.example.warehouse.service.SupplierService;
 import com.example.warehouse.ui.util.StatusBar;
@@ -28,6 +32,9 @@ public class SuppliersPanel extends JPanel {
 
     private JButton editBtn;
     private JButton deleteBtn;
+    private JPanel toolbar;
+    private SupplierSelectionListener selectionListener;
+    private SupplierEditRequestListener editRequestListener;
 
     public SuppliersPanel(StatusBar statusBar) {
         this.statusBar = statusBar;
@@ -35,7 +42,8 @@ public class SuppliersPanel extends JPanel {
         setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
         setBackground(Color.WHITE);
 
-        add(buildToolbar(), BorderLayout.NORTH);
+        toolbar = buildToolbar();
+        add(toolbar, BorderLayout.NORTH);
         add(buildTable(), BorderLayout.CENTER);
 
         refresh();
@@ -115,14 +123,24 @@ public class SuppliersPanel extends JPanel {
         table.getColumnModel().getColumn(5).setPreferredWidth(280);
 
         table.getSelectionModel().addListSelectionListener(e -> {
+            if (e.getValueIsAdjusting()) return;
             boolean sel = table.getSelectedRowCount() > 0;
             editBtn.setEnabled(sel);
             deleteBtn.setEnabled(sel);
+            if (selectionListener != null) {
+                Supplier s = sel ? getSelectedSupplier() : null;
+                selectionListener.onSelectionChanged(new SupplierSelectedEvent(
+                        s != null ? s.getId() : null));
+            }
         });
 
         table.addMouseListener(new MouseAdapter() {
             @Override public void mouseClicked(MouseEvent e) {
-                if (e.getClickCount() == 2) openEditDialog();
+                if (e.getClickCount() == 2 && editRequestListener != null) {
+                    Supplier s = getSelectedSupplier();
+                    if (s != null) editRequestListener.onEditRequested(
+                            new SupplierEditRequestEvent(s.getId()));
+                }
             }
         });
 
@@ -138,7 +156,21 @@ public class SuppliersPanel extends JPanel {
         return new JScrollPane(table);
     }
 
-    private void filterTable(String text) {
+    public void setToolbarVisible(boolean visible) {
+        if (toolbar != null) {
+            toolbar.setVisible(visible);
+        }
+    }
+
+    public void setSelectionListener(SupplierSelectionListener listener) {
+        this.selectionListener = listener;
+    }
+
+    public void setEditRequestListener(SupplierEditRequestListener listener) {
+        this.editRequestListener = listener;
+    }
+
+    public void filterTable(String text) {
         if (text.trim().isEmpty()) sorter.setRowFilter(null);
         else sorter.setRowFilter(RowFilter.regexFilter("(?i)" + text.trim()));
     }

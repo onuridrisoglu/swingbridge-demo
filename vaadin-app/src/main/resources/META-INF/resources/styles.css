@@ -5,8 +5,8 @@
    ============================================================ */
 
 html {
---lumo-primary-color: #1b3a5c;
---lumo-error-color: #a31515;
+    --aura-accent-color-light: #1b3a5c;
+    --aura-red: #a31515;
 }
 
 .login-view {
@@ -394,4 +394,32 @@ html {
 
 .main-layout::part(content) {
   background: #f4f7fb;
+}
+
+/* ============================================================
+   SUPPLIERS TOOLBAR
+   ============================================================ */
+
+.suppliers-toolbar {
+  background: #f0f4f9;
+  border-bottom: 1px solid #d0dcea;
+  flex-shrink: 0;
+  width: 100% !important;
+  box-sizing: border-box;
+}
+
+.toolbar-btn-dark {
+  --vaadin-button-background: #1b3a5c !important;
+  --vaadin-button-text-color: #ffffff !important;
+  --vaadin-button-hover-background: #254e7a !important;
+  font-family: 'Barlow', sans-serif !important;
+  font-weight: 500 !important;
+}
+
+.toolbar-btn-delete {
+  --vaadin-button-background: #a31515 !important;
+  --vaadin-button-text-color: #ffffff !important;
+  --vaadin-button-hover-background: #c01a1a !important;
+  font-family: 'Barlow', sans-serif !important;
+  font-weight: 500 !important;
 }

@@ -2,6 +2,7 @@ package com.example.warehouse.service;
 
 import com.example.warehouse.dao.SupplierDAO;
 import com.example.warehouse.model.Supplier;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 public class SupplierService {
@@ -30,5 +31,24 @@ public class SupplierService {
 
     public long count() {
         return supplierDAO.count();
+    }
+
+    public byte[] exportToCsv() {
+        StringBuilder sb = new StringBuilder("ID,Supplier Name,Contact Person,Email,Phone,Address\r\n");
+        for (Supplier s : findAll()) {
+            sb.append(csvEscape(s.getId().toString())).append(',')
+              .append(csvEscape(s.getName())).append(',')
+              .append(csvEscape(s.getContactName())).append(',')
+              .append(csvEscape(s.getEmail())).append(',')
+              .append(csvEscape(s.getPhone())).append(',')
+              .append(csvEscape(s.getAddress())).append("\r\n");
+        }
+        return sb.toString().getBytes(StandardCharsets.UTF_8);
+    }
+
+    private static String csvEscape(String val) {
+        if (val == null) return "";
+        String v = val.replace("\"", "\"\"");
+        return (v.contains(",") || v.contains("\"") || v.contains("\n")) ? "\"" + v + "\"" : v;
     }
 }
