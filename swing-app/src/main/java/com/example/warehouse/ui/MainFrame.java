@@ -9,6 +9,10 @@ import com.example.warehouse.ui.stock.StockMovementsPanel;
 import com.example.warehouse.ui.suppliers.SuppliersPanel;
 import com.example.warehouse.ui.util.StatusBar;
 import com.example.warehouse.ui.util.UIConstants;
+import com.example.warehouse.bridge.SupplierEditRequestListener;
+import com.example.warehouse.bridge.SupplierSelectedEvent;
+import com.example.warehouse.bridge.SupplierSelectionListener;
+import com.vaadin.swingbridge.interop.ExposedMethod;
 
 import javax.swing.*;
 import java.awt.*;
@@ -17,39 +21,119 @@ import java.awt.event.WindowEvent;
 
 public class MainFrame extends JFrame {
 
-    private final StatusBar statusBar;
-    private final JTabbedPane tabbedPane;
+    private StatusBar statusBar;
+    private JTabbedPane tabbedPane;
+    private CardLayout cardLayout;
+    private JPanel cards;
+    private SuppliersPanel suppliersPanel;
 
     public MainFrame(GraphicsConfiguration gc) {
+        this(gc, false);
+    }
+
+    public MainFrame(GraphicsConfiguration gc, boolean bridgeMode) {
         super(gc);
         setTitle("WarehousePro™ 3.5  —  Inventory & Warehouse Management");
         setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
         setSize(1280, 800);
-        setMinimumSize(new Dimension(900, 600));
-        Rectangle screen = gc.getBounds();
-        setLocation(screen.x + (screen.width - 1280) / 2, screen.y + (screen.height - 800) / 2);
 
-        statusBar = new StatusBar(AppSession.getCurrentUser().getFullName());
+        if (bridgeMode) {
+            statusBar = new StatusBar("");
+            setUndecorated(true);
 
-        setJMenuBar(buildMenuBar());
+            cardLayout = new CardLayout();
+            cards = new JPanel(cardLayout);
+            suppliersPanel = new SuppliersPanel(statusBar);
+            cards.add(new DashboardPanel(statusBar),      "dashboard");
+            cards.add(new ProductsPanel(statusBar),       "products");
+            cards.add(suppliersPanel,                     "suppliers");
+            cards.add(new PurchaseOrdersPanel(statusBar), "orders");
+            cards.add(new StockMovementsPanel(statusBar), "stock");
 
-        JPanel root = new JPanel(new BorderLayout());
-        root.add(buildTitleBar(), BorderLayout.NORTH);
+            JPanel root = new JPanel(new BorderLayout());
+            root.add(cards, BorderLayout.CENTER);
+            setContentPane(root);
+        } else {
+            statusBar = new StatusBar(AppSession.getCurrentUser().getFullName());
+            setMinimumSize(new Dimension(900, 600));
+            Rectangle screen = gc.getBounds();
+            setLocation(screen.x + (screen.width - 1280) / 2, screen.y + (screen.height - 800) / 2);
 
-        tabbedPane = buildTabbedPane();
-        root.add(tabbedPane, BorderLayout.CENTER);
-        root.add(statusBar, BorderLayout.SOUTH);
+            setJMenuBar(buildMenuBar());
 
-        setContentPane(root);
+            JPanel root = new JPanel(new BorderLayout());
+            root.add(buildTitleBar(), BorderLayout.NORTH);
+            tabbedPane = buildTabbedPane();
+            root.add(tabbedPane,  BorderLayout.CENTER);
+            root.add(statusBar,   BorderLayout.SOUTH);
+            setContentPane(root);
 
-        addWindowListener(new WindowAdapter() {
-            @Override
-            public void windowClosing(WindowEvent e) {
-                confirmExit();
-            }
-        });
+            addWindowListener(new WindowAdapter() {
+                @Override
+                public void windowClosing(WindowEvent e) {
+                    confirmExit();
+                }
+            });
+        }
 
         setVisible(true);
+    }
+
+    @ExposedMethod
+    public void showDashboard() {
+        if (cardLayout != null) cardLayout.show(cards, "dashboard");
+        else tabbedPane.setSelectedIndex(0);
+
+    }
+
+    @ExposedMethod
+    public void showProducts() {
+        if (cardLayout != null) cardLayout.show(cards, "products");
+        else tabbedPane.setSelectedIndex(1);
+    }
+
+    @ExposedMethod
+    public void showSuppliers() {
+        if (cardLayout != null) cardLayout.show(cards, "suppliers");
+        else tabbedPane.setSelectedIndex(2);
+    }
+
+    @ExposedMethod
+    public void showOrders() {
+        if (cardLayout != null) cardLayout.show(cards, "orders");
+        else tabbedPane.setSelectedIndex(3);
+    }
+
+    @ExposedMethod
+    public void showStock() {
+        if (cardLayout != null) cardLayout.show(cards, "stock");
+        else tabbedPane.setSelectedIndex(4);
+    }
+
+    @ExposedMethod
+    public void showSuppliersTable() {
+        if (suppliersPanel != null) suppliersPanel.setToolbarVisible(false);
+        if (cardLayout != null) cardLayout.show(cards, "suppliers");
+    }
+
+    @ExposedMethod
+    public void setSupplierSelectionListener(SupplierSelectionListener listener) {
+        if (suppliersPanel != null) suppliersPanel.setSelectionListener(listener);
+    }
+
+    @ExposedMethod
+    public void setSupplierEditRequestListener(SupplierEditRequestListener listener) {
+        if (suppliersPanel != null) suppliersPanel.setEditRequestListener(listener);
+    }
+
+    @ExposedMethod
+    public void refreshSuppliers() {
+        if (suppliersPanel != null) suppliersPanel.refresh();
+    }
+
+    @ExposedMethod
+    public void setSupplierFilter(String filter) {
+        if (suppliersPanel != null) suppliersPanel.filterTable(filter);
     }
 
     private JPanel buildTitleBar() {

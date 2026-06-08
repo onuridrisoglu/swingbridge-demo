@@ -1,11 +1,15 @@
 package com.example.views;
 
-import com.example.swingbridge.SwingEventBridge;
+import com.example.warehouse.bridge.SupplierEditRequestEvent;
+import com.example.warehouse.bridge.SupplierEditRequestListener;
+import com.example.warehouse.bridge.SupplierSelectedEvent;
+import com.example.warehouse.bridge.SupplierSelectionListener;
 import com.example.warehouse.model.Supplier;
 import com.example.warehouse.service.SupplierService;
-import com.example.warehouse.shared.SupplierEditRequestEvent;
-import com.example.warehouse.shared.SupplierSelectionEvent;
-import com.example.warehouse.shared.SwingEventPublisher;
+import com.example.warehouse.ui.MainFrameBridge;
+import com.vaadin.flow.component.AttachEvent;
+import com.vaadin.flow.component.DetachEvent;
+import com.vaadin.flow.shared.Registration;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.confirmdialog.ConfirmDialog;
@@ -19,18 +23,30 @@ import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.component.textfield.TextField;
+import com.vaadin.flow.component.textfield.TextFieldVariant;
 import com.vaadin.flow.data.value.ValueChangeMode;
 import com.vaadin.flow.router.Route;
-import com.vaadin.flow.server.StreamResource;
+import com.vaadin.flow.server.streams.DownloadHandler;
+import com.vaadin.flow.server.streams.DownloadResponse;
+import com.vaadin.swingbridge.SwingBridge;
+import com.vaadin.swingbridge.interop.BridgeHandle;
+import com.vaadin.swingbridge.interop.VaadinCallback;
 
 import java.io.ByteArrayInputStream;
-import java.nio.charset.StandardCharsets;
 
 @Route(value = "suppliers", layout = MainLayout.class)
 public class SuppliersView extends VerticalLayout {
 
+    private static final String MAIN_CLASS = "com.example.warehouse.bridge.BridgeMain";
+
     private final SupplierService service = new SupplierService();
-    private SupplierSelectionEvent selectedEvent = null;
+    private final BridgeHandle<MainFrameBridge> handle;
+
+    private final Button editBtn;
+    private final Button deleteBtn;
+
+    private Long selectedId;
+    private Registration callbackRegistration;
 
     public SuppliersView() {
         setSizeFull();
@@ -39,26 +55,18 @@ public class SuppliersView extends VerticalLayout {
 
         // --- Vaadin toolbar ---
         Button addBtn     = new Button("+ Add Supplier");
-        //<theme-editor-local-classname>
-        addBtn.addClassName("suppliers-view-button-1");
-        Button editBtn    = new Button("Edit");
-        Button deleteBtn  = new Button("Delete");
+        editBtn           = new Button("Edit");
+        deleteBtn         = new Button("Delete");
         Button refreshBtn = new Button("↺ Refresh");
-        StreamResource csvResource = new StreamResource("suppliers.csv", () -> {
-            StringBuilder sb = new StringBuilder("ID,Supplier Name,Contact Person,Email,Phone,Address\r\n");
-            for (Supplier s : service.findAll()) {
-                sb.append(csvEscape(s.getId().toString())).append(',')
-                  .append(csvEscape(s.getName())).append(',')
-                  .append(csvEscape(s.getContactName())).append(',')
-                  .append(csvEscape(s.getEmail())).append(',')
-                  .append(csvEscape(s.getPhone())).append(',')
-                  .append(csvEscape(s.getAddress())).append("\r\n");
-            }
-            return new ByteArrayInputStream(sb.toString().getBytes(StandardCharsets.UTF_8));
-        });
+
         Button exportBtn  = new Button("⬇ Export CSV");
-        Anchor exportAnchor = new Anchor(csvResource, "");
-        exportAnchor.getElement().setAttribute("download", true);
+        Anchor exportAnchor = new Anchor(
+                DownloadHandler.fromInputStream(e -> {
+                    byte[] csv = service.exportToCsv();
+                    return new DownloadResponse(
+                            new ByteArrayInputStream(csv), "suppliers.csv", "text/csv", csv.length);
+                }),
+                "");
         exportAnchor.add(exportBtn);
 
         addBtn.addThemeVariants(ButtonVariant.PRIMARY, ButtonVariant.SMALL);
@@ -77,7 +85,7 @@ public class SuppliersView extends VerticalLayout {
         searchField.setPlaceholder("Search...");
         searchField.setClearButtonVisible(true);
         searchField.setValueChangeMode(ValueChangeMode.EAGER);
-        searchField.addThemeVariants(com.vaadin.flow.component.textfield.TextFieldVariant.LUMO_SMALL);
+        searchField.addThemeVariants(TextFieldVariant.LUMO_SMALL);
 
         HorizontalLayout toolbar = new HorizontalLayout();
         toolbar.addClassName("suppliers-toolbar");
@@ -88,75 +96,54 @@ public class SuppliersView extends VerticalLayout {
         toolbar.setWidth("1200px");
         toolbar.getStyle().set("padding", "8px 12px").set("box-sizing", "border-box");
 
-        // --- SwingEventBridge: table-only Swing frame ---
-        SwingEventBridge tableBridge =
-                new SwingEventBridge("com.example.warehouse.bridge.SuppliersTableFrame")
-                        .registerPublisher(SwingEventPublisher.class, "setEventPublisher")
-                        .registerPublisher(SwingEventPublisher.class, "setEditRequestPublisher")
-                        .addEventListener(SupplierSelectionEvent.class, event -> {
-                            boolean selected = event.id != null;
-                            selectedEvent = selected ? event : null;
-                            editBtn.setEnabled(selected);
-                            deleteBtn.setEnabled(selected);
-                        });
+        // --- SwingBridge ---
+        SwingBridge bridge = new SwingBridge(MAIN_CLASS);
+        handle = SwingBridge.interop(MAIN_CLASS).of(MainFrameBridge.class);
+        handle.onReady(MainFrameBridge::showSuppliersTable);
 
-        // Separate statement so tableBridge is definitely assigned when the lambda captures it
-        tableBridge.addEventListener(SupplierEditRequestEvent.class, event -> {
-            selectedEvent = new SupplierSelectionEvent(
-                    event.id, event.name, event.contactName,
-                    event.email, event.phone, event.address);
-            editBtn.setEnabled(true);
-            deleteBtn.setEnabled(true);
-            openForm("Edit Supplier", selectedEvent, tableBridge);
-        });
+        // Button actions
+        addBtn.addClickListener(e -> openForm(null));
+        editBtn.addClickListener(e -> { if (selectedId != null) openForm(selectedId); });
+        deleteBtn.addClickListener(e -> confirmDelete());
+        refreshBtn.addClickListener(e -> handle.onReady(MainFrameBridge::refreshSuppliers));
+        searchField.addValueChangeListener(e -> handle.onReady(b -> b.setSupplierFilter(e.getValue())));
 
-        // Add
-        addBtn.addClickListener(e -> openForm("Add Supplier", null, tableBridge));
-
-        // Edit
-        editBtn.addClickListener(e -> {
-            if (selectedEvent != null) openForm("Edit Supplier", selectedEvent, tableBridge);
-        });
-
-        // Delete
-        deleteBtn.addClickListener(e -> {
-            if (selectedEvent == null) return;
-            ConfirmDialog confirm = new ConfirmDialog();
-            confirm.setHeader("Delete Supplier");
-            confirm.setText("Delete '" + selectedEvent.name + "'? This cannot be undone.");
-            confirm.setCancelable(true);
-            confirm.setConfirmText("Delete");
-            confirm.setConfirmButtonTheme("error primary");
-            confirm.addConfirmListener(ev -> {
-                try {
-                    service.delete(Long.parseLong(selectedEvent.id));
-                    selectedEvent = null;
-                    editBtn.setEnabled(false);
-                    deleteBtn.setEnabled(false);
-                    tableBridge.callSwingMethod("refreshTable");
-                    notify("Supplier deleted", false);
-                } catch (Exception ex) {
-                    notify("Cannot delete: supplier may be referenced by products or orders.", true);
-                }
-            });
-            confirm.open();
-        });
-
-        // Refresh
-        refreshBtn.addClickListener(e -> tableBridge.callSwingMethod("refreshTable"));
-
-        // Search
-        searchField.addValueChangeListener(e -> tableBridge.callSwingMethod("setFilter", e.getValue()));
-
-        tableBridge.setSizeFull();
-
-        add(toolbar, tableBridge);
-        setFlexGrow(1, tableBridge);
+        add(toolbar, bridge);
+        setFlexGrow(1, bridge);
     }
 
-    private void openForm(String title, SupplierSelectionEvent existing, SwingEventBridge tableBridge) {
+    @Override
+    protected void onAttach(AttachEvent e) {
+        super.onAttach(e);
+        callbackRegistration = handle.registerCallback(this);
+    }
+
+    @VaadinCallback(observerFor = SupplierSelectionListener.class)
+    public void onSelectionChanged(SupplierSelectedEvent event) {
+        selectedId = event.id;
+        editBtn.setEnabled(selectedId != null);
+        deleteBtn.setEnabled(selectedId != null);
+    }
+
+    @VaadinCallback(observerFor = SupplierEditRequestListener.class)
+    public void onEditRequested(SupplierEditRequestEvent event) {
+        openForm(event.id);
+    }
+
+    @Override
+    protected void onDetach(DetachEvent e) {
+        if (callbackRegistration != null) {
+            callbackRegistration.remove();
+            callbackRegistration = null;
+        }
+        super.onDetach(e);
+    }
+
+    private void openForm(Long existingId) {
+        Supplier existing = existingId != null ? service.findById(existingId) : null;
+
         Dialog dialog = new Dialog();
-        dialog.setHeaderTitle(title);
+        dialog.setHeaderTitle(existingId == null ? "Add Supplier" : "Edit Supplier");
         dialog.setWidth("420px");
 
         TextField nameField    = new TextField("Supplier Name");
@@ -174,19 +161,19 @@ public class SuppliersView extends VerticalLayout {
         addressField.setMaxHeight("80px");
 
         if (existing != null) {
-            nameField.setValue(existing.name);
-            contactField.setValue(existing.contactName);
-            emailField.setValue(existing.email);
-            phoneField.setValue(existing.phone);
-            addressField.setValue(existing.address);
+            nameField.setValue(existing.getName() != null ? existing.getName() : "");
+            contactField.setValue(existing.getContactName() != null ? existing.getContactName() : "");
+            emailField.setValue(existing.getEmail() != null ? existing.getEmail() : "");
+            phoneField.setValue(existing.getPhone() != null ? existing.getPhone() : "");
+            addressField.setValue(existing.getAddress() != null ? existing.getAddress() : "");
         }
 
         FormLayout form = new FormLayout(nameField, contactField, emailField, phoneField, addressField);
         form.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 1));
         dialog.add(form);
 
-        Button cancelBtn = new Button("Cancel", e -> dialog.close());
-        Button saveBtn   = new Button("Save", e -> {
+        Button cancelBtn = new Button("Cancel", ev -> dialog.close());
+        Button saveBtn   = new Button("Save", ev -> {
             if (nameField.isEmpty()) {
                 notify("Supplier name is required.", true);
                 return;
@@ -197,17 +184,16 @@ public class SuppliersView extends VerticalLayout {
                         emailField.getValue(), phoneField.getValue(), addressField.getValue()));
                 notify("Supplier added.", false);
             } else {
-                Supplier s = service.findById(Long.parseLong(existing.id));
-                s.setName(nameField.getValue());
-                s.setContactName(contactField.getValue());
-                s.setEmail(emailField.getValue());
-                s.setPhone(phoneField.getValue());
-                s.setAddress(addressField.getValue());
-                service.update(s);
+                existing.setName(nameField.getValue());
+                existing.setContactName(contactField.getValue());
+                existing.setEmail(emailField.getValue());
+                existing.setPhone(phoneField.getValue());
+                existing.setAddress(addressField.getValue());
+                service.update(existing);
                 notify("Supplier updated.", false);
             }
             dialog.close();
-            tableBridge.callSwingMethod("refreshTable");
+            handle.onReady(MainFrameBridge::refreshSuppliers);
         });
         saveBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
 
@@ -215,10 +201,30 @@ public class SuppliersView extends VerticalLayout {
         dialog.open();
     }
 
-    private static String csvEscape(String val) {
-        if (val == null) return "";
-        String v = val.replace("\"", "\"\"");
-        return (v.contains(",") || v.contains("\"") || v.contains("\n")) ? "\"" + v + "\"" : v;
+    private void confirmDelete() {
+        if (selectedId == null) return;
+        Supplier s = service.findById(selectedId);
+        if (s == null) return;
+
+        ConfirmDialog confirm = new ConfirmDialog();
+        confirm.setHeader("Delete Supplier");
+        confirm.setText("Delete '" + s.getName() + "'? This cannot be undone.");
+        confirm.setCancelable(true);
+        confirm.setConfirmText("Delete");
+        confirm.setConfirmButtonTheme("error primary");
+        confirm.addConfirmListener(ev -> {
+            try {
+                service.delete(s.getId());
+                selectedId = null;
+                editBtn.setEnabled(false);
+                deleteBtn.setEnabled(false);
+                handle.onReady(MainFrameBridge::refreshSuppliers);
+                notify("Supplier deleted.", false);
+            } catch (Exception ex) {
+                notify("Cannot delete: supplier may be referenced by products or orders.", true);
+            }
+        });
+        confirm.open();
     }
 
     private static void notify(String message, boolean error) {
