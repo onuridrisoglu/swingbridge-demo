@@ -1,0 +1,18 @@
+# H2 embedded database — regenerated on first run via DataSeeder
+*.mv.db
+*.trace.db
+
+# Maven build output
+target/
+
+# Vaadin production build artifacts
+vaadin-app/node_modules/
+vaadin-app/.pnpm-store/
+vaadin-app/package-lock.json
+vaadin-app/pnpm-lock.yaml
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.DS_Store
