@@ -70,6 +70,7 @@ public class MainLayout extends AppLayout implements BeforeEnterObserver {
         nav.addClassName("main-nav");
         nav.addThemeVariants(SideNavVariant.AURA_FILLED);
         nav.addItem(new SideNavItem("Dashboard", DashboardView.class,  VaadinIcon.DASHBOARD.create()));
+        nav.addItem(new SideNavItem("Dashboard · Modern", DashboardModernView.class, VaadinIcon.CHART_GRID.create()));
         nav.addItem(new SideNavItem("Products",  ProductsView.class,   VaadinIcon.PACKAGE.create()));
         nav.addItem(new SideNavItem("Suppliers", SuppliersView.class,  VaadinIcon.FACTORY.create()));
         nav.addItem(new SideNavItem("Orders",    OrdersView.class,     VaadinIcon.CART.create()));
