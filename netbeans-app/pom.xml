@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.example</groupId>
+    <artifactId>warehouse-netbeans-parent</artifactId>
+    <version>3.5.0</version>
+    <packaging>pom</packaging>
+    <name>WarehousePro 3.5 — NetBeans RCP (Parent)</name>
+    <description>NetBeans Platform (Rich Client Platform) edition of the WarehousePro warehouse-management app.</description>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <maven.compiler.release>17</maven.compiler.release>
+
+        <!-- NetBeans Platform release. RELEASE250 == Apache NetBeans 25. -->
+        <netbeans.version>RELEASE250</netbeans.version>
+
+        <!-- Branding token: identifies this application's branded resources + user dir. -->
+        <brandingToken>warehousepro</brandingToken>
+
+        <!-- Third-party stack — kept identical to the Swing edition. -->
+        <hibernate.version>6.4.4.Final</hibernate.version>
+        <h2.version>2.2.224</h2.version>
+        <jfreechart.version>1.5.4</jfreechart.version>
+        <slf4j.version>2.0.9</slf4j.version>
+
+        <nbm.plugin.version>14.5</nbm.plugin.version>
+    </properties>
+
+    <modules>
+        <module>warehouse</module>
+        <module>application</module>
+    </modules>
+
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.netbeans.utilities</groupId>
+                    <artifactId>nbm-maven-plugin</artifactId>
+                    <version>${nbm.plugin.version}</version>
+                    <extensions>true</extensions>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-jar-plugin</artifactId>
+                    <version>3.4.1</version>
+                    <configuration>
+                        <archive>
+                            <!-- nbm:manifest writes the OpenIDE-Module headers here; reuse them. -->
+                            <manifestFile>${project.build.outputDirectory}/META-INF/MANIFEST.MF</manifestFile>
+                        </archive>
+                    </configuration>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <version>3.13.0</version>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+    </build>
+</project>

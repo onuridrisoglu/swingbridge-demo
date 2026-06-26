@@ -1,0 +1,206 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>com.example</groupId>
+    <artifactId>warehouse-vaadin-app-nb</artifactId>
+    <version>1.0-SNAPSHOT</version>
+    <packaging>jar</packaging>
+
+    <properties>
+        <maven.compiler.source>21</maven.compiler.source>
+        <vaadin.version>25.1.1</vaadin.version>
+        <!-- 1.2.0 is the first SwingBridge release with the NetBeans RCP bridge
+             (com.vaadin.swingbridge.NetBeansRcpBridge). -->
+        <swing-bridge.version>1.2.0</swing-bridge.version>
+        <swing-bridge.path>${settings.localRepository}/com/vaadin</swing-bridge.path>
+        <!-- Pre-built NetBeans RCP distribution to embed (copied here by start-netbeans-vaadin.sh). -->
+        <rcp.cluster.dir>${project.basedir}/applibs/warehousepro</rcp.cluster.dir>
+    </properties>
+
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>4.0.5</version>
+        <relativePath/>
+    </parent>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>com.vaadin</groupId>
+                <artifactId>vaadin-bom</artifactId>
+                <version>${vaadin.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <dependencies>
+        <!-- ===== Vaadin Swing Bridge (NetBeans RCP capable) ===== -->
+        <dependency>
+            <groupId>com.vaadin</groupId>
+            <artifactId>swing-bridge-patch</artifactId>
+            <version>${swing-bridge.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.vaadin</groupId>
+            <artifactId>swing-bridge-graphics</artifactId>
+            <version>${swing-bridge.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.vaadin</groupId>
+            <artifactId>swing-bridge-flow</artifactId>
+            <version>${swing-bridge.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.apache.logging.log4j</groupId>
+                    <artifactId>log4j-slf4j2-impl</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <!-- ===== Vaadin / Spring Boot ===== -->
+        <dependency>
+            <groupId>com.vaadin</groupId>
+            <artifactId>vaadin</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.vaadin</groupId>
+            <artifactId>vaadin-spring-boot-starter</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.vaadin</groupId>
+            <artifactId>vaadin-dev</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- ===== Domain layer (entities/DAOs/services) for the host's own login +
+             native dashboard read model. Same classes the RCP module uses; taken from
+             the NetBeans module jar so this host pairs with netbeans-app. ===== -->
+        <dependency>
+            <groupId>com.example</groupId>
+            <artifactId>warehouse</artifactId>
+            <version>3.5.0</version>
+            <scope>system</scope>
+            <systemPath>${project.basedir}/lib/warehouse-3.5.0.jar</systemPath>
+        </dependency>
+        <!-- The domain jar references Hibernate/H2/JFreeChart; provide them on the
+             host classpath (the bundled RCP distribution has its own copies). -->
+        <dependency>
+            <groupId>org.hibernate.orm</groupId>
+            <artifactId>hibernate-core</artifactId>
+            <version>6.4.4.Final</version>
+        </dependency>
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <version>2.2.224</version>
+        </dependency>
+    </dependencies>
+
+    <repositories>
+        <repository>
+            <id>vaadin-prereleases</id>
+            <url>https://maven.vaadin.com/vaadin-prereleases/</url>
+        </repository>
+    </repositories>
+
+    <pluginRepositories>
+        <pluginRepository>
+            <id>vaadin-prereleases</id>
+            <url>https://maven.vaadin.com/vaadin-prereleases/</url>
+        </pluginRepository>
+    </pluginRepositories>
+
+    <build>
+        <defaultGoal>spring-boot:run</defaultGoal>
+        <plugins>
+            <plugin>
+                <groupId>com.vaadin</groupId>
+                <artifactId>vaadin-maven-plugin</artifactId>
+                <version>${vaadin.version}</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>prepare-frontend</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <!-- all JVM flags as one space-separated string -->
+                    <jvmArguments>
+                        --patch-module java.desktop=${swing-bridge.path}/swing-bridge-patch/${swing-bridge.version}/swing-bridge-patch-${swing-bridge.version}.jar
+                        -Xbootclasspath/a:${swing-bridge.path}/swing-bridge-graphics/${swing-bridge.version}/swing-bridge-graphics-${swing-bridge.version}.jar
+                        --add-reads=java.desktop=ALL-UNNAMED
+                        --add-exports=java.desktop/sun.font=ALL-UNNAMED
+                        --add-exports=java.desktop/sun.awt=ALL-UNNAMED
+                        --add-exports=java.desktop/sun.awt.dnd=ALL-UNNAMED
+                        --add-exports=java.desktop/sun.awt.dnd.peer=ALL-UNNAMED
+                        --add-exports=java.base/sun.nio.cs=ALL-UNNAMED
+                        --add-exports=java.desktop/sun.java2d=ALL-UNNAMED
+                        --add-exports=java.desktop/sun.java2d.pipe=ALL-UNNAMED
+                        --add-exports=java.desktop/sun.awt.datatransfer=ALL-UNNAMED
+                        --add-exports=java.desktop/sun.awt.image=ALL-UNNAMED
+                        --add-exports=java.desktop/java.awt.peer=ALL-UNNAMED
+                        --add-exports=java.desktop/java.awt.dnd=ALL-UNNAMED
+                        --add-exports=java.desktop/java.awt.dnd.peer=ALL-UNNAMED
+                        --add-exports=java.desktop/sun.print=ALL-UNNAMED
+                        --add-exports=java.desktop/sun.swing=ALL-UNNAMED
+                        --add-opens=java.desktop/java.awt.event=ALL-UNNAMED
+                        --add-opens=java.desktop/sun.awt=ALL-UNNAMED
+                        --add-opens=java.desktop/java.awt.dnd=ALL-UNNAMED
+                        --add-opens=java.base/java.lang=ALL-UNNAMED
+                        --add-opens=java.base/java.net=ALL-UNNAMED
+                        --add-opens=java.base/java.security=ALL-UNNAMED
+                        --add-opens=java.desktop/javax.swing=ALL-UNNAMED
+                        --add-opens=java.desktop/javax.swing.text=ALL-UNNAMED
+                        -Djava.security.manager=allow
+
+                        -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5006
+                    </jvmArguments>
+
+                    <!-- JVM -D system properties -->
+                    <systemPropertyVariables>
+                        <java.awt.headless>false</java.awt.headless>
+                        <!-- Where the pre-built NetBeans RCP distribution lives. -->
+                        <swingbridge.rcp.cluster.dir>${rcp.cluster.dir}</swingbridge.rcp.cluster.dir>
+                        <!-- Tells the embedded RCP to skip its desktop login (Vaadin logs in). -->
+                        <warehouse.bridge>true</warehouse.bridge>
+                        <!-- Disable the NetBeans splash. The SwingBridge headless java.desktop
+                             patch lacks sun.awt.PlatformGraphicsInfo.getSplashScreenLib(), which
+                             the splash bootstrap calls (NoSuchMethodError on session teardown).
+                             The bridge launcher honors a pre-set netbeans.splash value. -->
+                        <netbeans.splash>false</netbeans.splash>
+                    </systemPropertyVariables>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+    <profiles>
+        <profile>
+            <id>production</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.vaadin</groupId>
+                        <artifactId>vaadin-maven-plugin</artifactId>
+                        <version>${vaadin.version}</version>
+                        <executions>
+                            <execution>
+                                <goals>
+                                    <goal>build-frontend</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+</project>

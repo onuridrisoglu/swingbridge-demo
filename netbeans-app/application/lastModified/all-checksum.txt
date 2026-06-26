@@ -1,0 +1,10 @@
+platform=1782391483383
+cluster.platform=1782391483383
+cluster.warehousepro=1782391483383
+cluster.java=1782391483383
+user=1782391483383
+crc=7
+locale=en_FI
+branding=warehousepro
+java.version=17.0.10
+java.vm.version=17.0.10+7

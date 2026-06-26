@@ -13,5 +13,8 @@
     <modules>
         <module>swing-app</module>
         <module>vaadin-app</module>
+        <!-- NetBeans Platform (RCP) edition. Heavier: first build downloads the
+             NetBeans platform cluster. Build it alone with: mvn -pl netbeans-app -am -->
+        <module>netbeans-app</module>
     </modules>
 </project>

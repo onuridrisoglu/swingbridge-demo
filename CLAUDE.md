@@ -11,6 +11,19 @@ Bridge. The demo has four stages:
 4. **Native Vaadin rebuild** — the dashboard re-implemented in pure Vaadin on
    `/dashboard-modern`.
 
+A third app, `netbeans-app`, is a parallel "before" state: the **same**
+WarehousePro application rebuilt on the **NetBeans Platform (RCP)** — screens are
+`TopComponent`s in the platform window system, login runs from `@OnStart`, and the
+domain layer is reused verbatim. See `netbeans-app/README.md`.
+
+A fourth module, `vaadin-app-nb`, is the NetBeans-RCP counterpart of `vaadin-app`:
+a Vaadin/Spring Boot host that embeds the `netbeans-app` distribution via
+`com.vaadin.swingbridge.NetBeansRcpBridge` (SwingBridge **1.2.0**) — full shell at
+`/`, one bridged `TopComponent` per route under a Vaadin shell, and a native
+`/dashboard-modern`. The embedded RCP runs with `-Dwarehouse.bridge=true` so its
+`@OnStart` skips the desktop login (the Vaadin `LoginView` authenticates instead).
+Requires **JDK 21**. See `vaadin-app-nb/README.md`.
+
 ## Project structure
 ```
 warehouse-demo/
@@ -91,6 +104,14 @@ Builds the Swing JAR, copies it to `vaadin-app/applibs/`, then starts Spring Boo
 Open `http://localhost:8080`.
 
 Login: `admin / admin` or `manager / manager`
+
+### NetBeans Platform (RCP) app
+```bash
+./start-netbeans.sh
+```
+Builds the NetBeans Platform app (first build downloads the platform cluster) and
+launches it via `nbm:run-platform`. Uses JDK 17. Login: `admin / admin` or
+`manager / manager`.
 
 To reset data: delete `warehousedb.mv.db` in the relevant app directory and restart.
 

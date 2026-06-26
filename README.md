@@ -14,6 +14,8 @@ Vaadin once they live in the browser.
 |---|---|
 | `swing-app` | The original Swing desktop application (WarehousePro 3.5). Also contains the bridge entry points and the interop event/listener types. |
 | `vaadin-app` | The Vaadin 25 / Spring Boot host application that embeds the Swing app and adds native Vaadin views. |
+| `netbeans-app` | The same WarehousePro app rebuilt on the **NetBeans Platform (RCP)** — an alternative legacy rich-client "before" state. See [`netbeans-app/README.md`](netbeans-app/README.md). |
+| `vaadin-app-nb` | Vaadin/Spring Boot host that bridges the **NetBeans RCP** app via `NetBeansRcpBridge` (SwingBridge 1.2.0) — full shell, per-`TopComponent` routes, and a native dashboard. See [`vaadin-app-nb/README.md`](vaadin-app-nb/README.md). |
 
 The root `pom.xml` is a Maven aggregator over the two modules. There is **no
 separate `shared-api` module** — the interop contract (event POJOs and listener
@@ -44,6 +46,27 @@ Spring Boot server. Open `http://localhost:8080` in a browser.
 
 On startup `SwingAppInitializer` initialises the embedded H2 database and seeds
 demo data. To reset, delete `warehousedb.mv.db` and restart.
+
+### NetBeans Platform (RCP) app (standalone)
+
+```bash
+./start-netbeans.sh
+```
+
+Builds the NetBeans Platform application and launches it (the first build
+downloads the NetBeans platform cluster). Same WarehousePro screens, rebuilt as
+NetBeans `TopComponent`s in the platform window system. Login: `admin / admin`
+or `manager / manager`. Details in [`netbeans-app/README.md`](netbeans-app/README.md).
+
+### NetBeans RCP in the browser (Vaadin Swing Bridge)
+
+```bash
+./start-netbeans-vaadin.sh
+```
+
+Builds the NetBeans RCP app, copies its distribution into `vaadin-app-nb`, and
+starts a Vaadin host that embeds it via `NetBeansRcpBridge`. Requires **JDK 21**.
+Open `http://localhost:8888`. Details in [`vaadin-app-nb/README.md`](vaadin-app-nb/README.md).
 
 ---
 
