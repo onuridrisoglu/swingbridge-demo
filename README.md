@@ -1,24 +1,19 @@
 # WarehousePro — Vaadin Swing Bridge Demo
 
-A staged migration demo showing how a legacy Java Swing desktop application
+A three-stage migration demo showing how a legacy Java Swing desktop application
 (**WarehousePro 3.5**) can be modernised to run in the browser using the
 [Vaadin Swing Bridge](https://vaadin.com/swing-bridge), without rewriting the
-existing UI code — and how individual screens can then be rebuilt natively in
-Vaadin once they live in the browser.
+existing UI code.
 
 ---
 
-## Modules
+## Projects
 
 | Module | Description |
 |---|---|
-| `swing-app` | The original Swing desktop application (WarehousePro 3.5). Also contains the bridge entry points and the interop event/listener types. |
-| `vaadin-app` | The Vaadin 25 / Spring Boot host application that embeds the Swing app and adds native Vaadin views. |
-
-The root `pom.xml` is a Maven aggregator over the two modules. There is **no
-separate `shared-api` module** — the interop contract (event POJOs and listener
-interfaces) lives in `swing-app/.../bridge/`, and the Vaadin host sees those
-types because the built Swing JAR is on its classpath (`vaadin-app/applibs/`).
+| `swing-app` | The original Swing desktop application |
+| `vaadin-app` | The Vaadin Spring Boot host application |
+| `shared-api` | Event and publisher interfaces shared across both runtimes |
 
 ---
 
@@ -33,7 +28,7 @@ types because the built Swing JAR is on its classpath (`vaadin-app/applibs/`).
 Builds the fat JAR and launches the desktop app directly.
 Login: `admin / admin` or `manager / manager`.
 
-### Vaadin app (all stages)
+### Vaadin app (all three stages)
 
 ```bash
 ./start-vaadin.sh
@@ -42,149 +37,102 @@ Login: `admin / admin` or `manager / manager`.
 Builds the Swing JAR, copies it to `vaadin-app/applibs/`, then starts the
 Spring Boot server. Open `http://localhost:8080` in a browser.
 
-On startup `SwingAppInitializer` initialises the embedded H2 database and seeds
-demo data. To reset, delete `warehousedb.mv.db` and restart.
+---
+
+## Stage 1 — Swing Bridge wrap (`/`)
+
+The root route serves the **entire Swing application** running inside the
+browser via the Swing Bridge — zero UI changes to the Swing code.
+
+The bridge launches the Swing `MainFrame` as a headless server-side process and
+streams its pixels to the browser. Users interact with the full Swing UI as if
+it were a native desktop app.
+
+**What to point out:** the complete Swing application running in a browser tab,
+with no code changes on the Swing side.
 
 ---
 
-## Stage 1 — Full Swing app in the browser (`/`)
+## Stage 2 — Vaadin foundation (`/dashboard`, `/products`, `/orders`, `/stock`)
 
-The root route (`WarehouseView`) wraps the **entire, unchanged Swing
-application** (`com.example.warehouse.Main`) inside a single `SwingBridge`
-component. The bridge runs the Swing UI server-side and streams it to the
-browser; the user interacts with the complete desktop app in a browser tab.
-
-**What to point out:** the full Swing application running in the browser with
-zero changes to the Swing code.
-
----
-
-## Stage 2 — Vaadin shell + bridged Swing tabs (`/dashboard`, `/products`, `/orders`, `/stock`)
-
-The desktop window chrome has been replaced with a native Vaadin shell, while
-each tab's content is still the original Swing panel, embedded via the bridge.
+The application shell has been replaced with native Vaadin components while the
+per-tab Swing panels are still embedded via the bridge.
 
 What is already Vaadin-native:
 
-- **Login** (`LoginView`) — Vaadin form backed by the existing Hibernate `User`
-  entity and `AppSession`.
-- **App shell** (`MainLayout`) — Vaadin `AppLayout` with `SideNav`,
-  `DrawerToggle`, and a user/logout menu. Navigation is handled by the Vaadin
-  router.
-- **Per-view bridge embedding** — `DashboardView`, `ProductsView`,
-  `OrdersView`, and `StockView` each create a `SwingBridge` for the shared Swing
-  `MainFrame` (`com.example.warehouse.bridge.BridgeMain`) and then call the
-  matching `showXxx()` method to display the right tab.
+- **Login screen** (`LoginView`) — Vaadin form backed by the existing Hibernate
+  `User` entity and `AppSession`.
+- **App shell** (`MainLayout`) — Vaadin `AppLayout` with `SideNav`, `DrawerToggle`,
+  and a user avatar/logout menu. Navigation is handled by the Vaadin router.
+- **Per-view bridge frames** — each view (`DashboardView`, `ProductsView`,
+  `OrdersView`, `StockView`) embeds its corresponding Swing panel through a
+  dedicated bridge class (`DashboardBridge`, `ProductsBridge`, …) that lives in
+  `swing-app/src/…/bridge/`.
 
-**What to point out:** the browser chrome is fully Vaadin; only the content area
-is still Swing — and switching Vaadin views drives the embedded Swing app.
+**What to point out:** the browser chrome is now fully Vaadin; only the content
+area still shows Swing panels.
 
 ---
 
-## Stage 3 — Two-way interop (`/suppliers`)
+## Stage 3 — Interoperability (`/suppliers`)
 
-The Suppliers view demonstrates **bidirectional, type-safe communication**
-between a Vaadin toolbar and the embedded Swing table, using the Vaadin Swing
-Bridge interop API.
+The Suppliers view demonstrates **bidirectional communication** between the
+Vaadin toolbar and a Swing table, using the `shared-api` module as the
+contract layer.
 
-### Vaadin → Swing (typed method calls)
+### Module layout
 
-Swing methods that should be callable from the browser are annotated with
-`@ExposedMethod` on `MainFrame`. At build time the Swing Bridge annotation
-processor generates a typed interface, `MainFrameBridge` (into
-`target/generated-sources/swing-bridge/`), with members such as:
+```
+shared-api/
+└── com/example/warehouse/shared/
+    ├── SupplierSelectionEvent.java   # fired when a row is selected (id=null → deselect)
+    ├── SupplierEditRequestEvent.java # fired on double-click in the Swing table
+    └── SwingEventPublisher.java      # functional interface: publish(Object event)
 
-```java
-void showSuppliersTable();
-void refreshSuppliers();
-void setSupplierFilter(String filter);
-void setSupplierSelectionListener(SupplierSelectionListener l);
-void setSupplierEditRequestListener(SupplierEditRequestListener l);
+swing-app/
+└── com/example/warehouse/bridge/
+    └── SuppliersTableFrame.java      # table-only JFrame; no toolbar
+
+vaadin-app/
+└── com/example/views/
+    └── SuppliersView.java            # Vaadin toolbar + SwingEventBridge
 ```
 
-The Vaadin view obtains a handle and calls those methods type-safely — no
-reflection, no stringly-typed method names:
+### How it works
 
-```java
-BridgeHandle<MainFrameBridge> handle =
-        SwingBridge.interop(MAIN_CLASS).of(MainFrameBridge.class);
+**Vaadin → Swing (method calls)**
 
-handle.onReady(MainFrameBridge::showSuppliersTable);              // show the tab
-refreshBtn.addClickListener(e -> handle.onReady(MainFrameBridge::refreshSuppliers));
-searchField.addValueChangeListener(e -> handle.onReady(b -> b.setSupplierFilter(e.getValue())));
-```
+`SwingEventBridge.callSwingMethod(name, args…)` invokes a public method on the
+Swing frame from the Vaadin UI thread. Used for:
 
 | Vaadin action | Swing method called |
 |---|---|
-| (on ready) | `showSuppliersTable()` |
-| Refresh button | `refreshSuppliers()` |
-| Search field | `setSupplierFilter(String)` |
-| After save/delete | `refreshSuppliers()` |
+| Refresh button | `SuppliersTableFrame.refreshTable()` |
+| Search field | `SuppliersTableFrame.setFilter(String)` |
+| After save/delete | `SuppliersTableFrame.refreshTable()` |
 
-### Swing → Vaadin (events)
+The **Export CSV** button is handled entirely on the Vaadin side: `SuppliersView`
+reads the data via `SupplierService`, builds the CSV in-memory, and delivers it
+as a browser file download using a `StreamResource` + `Anchor`. No Swing
+involved.
 
-The Swing side defines plain listener interfaces and event objects in
-`swing-app/.../bridge/`:
+**Swing → Vaadin (events)**
 
-```
-SupplierSelectedEvent / SupplierSelectionListener     # row selected (id = null → deselected)
-SupplierEditRequestEvent / SupplierEditRequestListener # row double-clicked
-```
+The Swing frame holds `SwingEventPublisher` references injected by the bridge
+at startup via setter methods. When the user interacts with the Swing table,
+events are published and the bridge converts them across the classloader
+boundary into the Vaadin-side equivalents:
 
-`MainFrame` exposes setters for these listeners (also part of the generated
-bridge). The Vaadin view registers itself with `handle.registerCallback(this)`
-and annotates its handler methods with `@VaadinCallback`, naming the Swing
-listener they implement:
+| User action | Event published | Vaadin reaction |
+|---|---|---|
+| Row selected | `SupplierSelectionEvent` (with data) | Enable Edit + Delete buttons, store selection |
+| Row deselected | `SupplierSelectionEvent` (id = null) | Disable Edit + Delete buttons |
+| Double-click row | `SupplierEditRequestEvent` | Open Edit form pre-filled |
 
-```java
-@VaadinCallback(observerFor = SupplierSelectionListener.class)
-public void onSelectionChanged(SupplierSelectedEvent event) {
-    selectedId = event.id;
-    editBtn.setEnabled(selectedId != null);
-    deleteBtn.setEnabled(selectedId != null);
-}
-
-@VaadinCallback(observerFor = SupplierEditRequestListener.class)
-public void onEditRequested(SupplierEditRequestEvent event) {
-    openForm(event.id);
-}
-```
-
-| User action (in Swing table) | Vaadin reaction |
-|---|---|
-| Row selected | Enable Edit + Delete, store selection |
-| Row deselected (`id == null`) | Disable Edit + Delete |
-| Double-click row | Open the Vaadin Edit form, pre-filled |
-
-### CSV export — entirely Vaadin
-
-The **Export CSV** button never touches Swing: `SuppliersView` calls
-`SupplierService.exportToCsv()` and serves the bytes as a browser download via
-`DownloadHandler` + `Anchor`.
-
-**What to point out:** the Vaadin toolbar and Swing table react to each other in
-real time — selection toggles buttons, Vaadin-side edits refresh the Swing
-table, and the search field filters it live — all through generated, type-safe
-bridge calls.
-
----
-
-## Stage 4 — Native Vaadin rebuild (`/dashboard-modern`)
-
-`DashboardModernView` ("Dashboard · Modern" in the side nav) is the same
-dashboard data rebuilt as a **fully native Vaadin screen** — no bridge at all.
-It uses the Vaadin `Dashboard` component (responsive widget grid), Vaadin
-Charts, and a `Grid` for low-stock items.
-
-It reads through `com.example.dashboard.DashboardService` (a Spring `@Service`)
-which wraps the legacy `ProductService` / `PurchaseOrderService` and exposes
-clean typed records (`KpiSummary`, `CategoryStock`, `LowStockItem`,
-`OrderStatusCount`) instead of Hibernate entities or `Object[]` rows. Because it
-hits the same H2 data as the Swing dashboard, the numbers match exactly.
-
-**What to point out:** once a screen lives in the browser, you can replace it
-incrementally with native Vaadin against the same data and services — the
-endpoint of the migration.
+**What to point out:** the Vaadin toolbar and the Swing table react to each
+other in real time — row selection enables/disables buttons, edits made in the
+Vaadin dialog refresh the Swing table, and the search field filters the Swing
+table live.
 
 ---
 
@@ -193,12 +141,10 @@ endpoint of the migration.
 | Layer | Technology |
 |---|---|
 | Swing UI | Java Swing, Nimbus L&F |
-| Swing charts | JFreeChart 1.5 |
-| Vaadin | Vaadin 25.1, Aura theme |
-| Vaadin charts | Vaadin Charts + Vaadin `Dashboard` (modern view) |
-| Interop | Vaadin Swing Bridge (`com.vaadin.swingbridge`) |
-| Web host | Spring Boot 4 |
+| Charts | JFreeChart 1.5 |
 | ORM | Hibernate 6.4 / Jakarta Persistence |
 | Database | H2 embedded (file-based) |
+| Vaadin | Vaadin 25.1, Aura theme |
+| Spring Boot | 4.0 |
 | Java | 17 |
 | Build | Maven 3 |

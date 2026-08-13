@@ -8,15 +8,15 @@
     
     <properties>
         <maven.compiler.source>21</maven.compiler.source>
-        <vaadin.version>25.1.1</vaadin.version>
-        <swing-bridge.version>1.2.0-alpha2</swing-bridge.version>
+        <vaadin.version>25.2.2</vaadin.version>
+        <swing-bridge.version>1.2.2</swing-bridge.version>
         <swing-bridge.path>${settings.localRepository}/com/vaadin</swing-bridge.path>
     </properties>
     
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>4.0.5</version>
+        <version>4.1.0</version>
         <relativePath/>
     </parent>
 
@@ -136,6 +136,7 @@
                     <execution>
                         <goals>
                             <goal>prepare-frontend</goal>
+                            <goal>build-frontend</goal>
                         </goals>
                     </execution>
                 </executions>
@@ -144,6 +145,11 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
+                    <!-- Bundle the system-scoped Swing app jar into the fat jar.
+                         SwingAppInitializer touches PersistenceUtil/DataSeeder at
+                         boot on the main classpath, so applibs.dir alone isn't enough. -->
+                    <includeSystemScope>true</includeSystemScope>
+
                     <!-- all JVM flags as one space-separated string -->
                     <jvmArguments>
                         --patch-module java.desktop=${swing-bridge.path}/swing-bridge-patch/${swing-bridge.version}/swing-bridge-patch-${swing-bridge.version}.jar
@@ -166,6 +172,7 @@
                         --add-opens=java.desktop/java.awt.event=ALL-UNNAMED
                         --add-opens=java.desktop/sun.awt=ALL-UNNAMED
                         --add-opens=java.desktop/java.awt.dnd=ALL-UNNAMED
+                        --add-opens=java.base/java.lang=ALL-UNNAMED
                         -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005
                     </jvmArguments>
 
@@ -178,26 +185,4 @@
             </plugin>
         </plugins>
     </build>
-
-    <profiles>
-        <profile>
-            <id>production</id>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>com.vaadin</groupId>
-                        <artifactId>vaadin-maven-plugin</artifactId>
-                        <version>${vaadin.version}</version>
-                        <executions>
-                            <execution>
-                                <goals>
-                                    <goal>build-frontend</goal>
-                                </goals>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-    </profiles>
 </project>
