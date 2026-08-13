@@ -2,7 +2,6 @@
 set -e
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
-SB_VERSION=1.2.0
 
 echo "Building Swing app..."
 (cd "$ROOT/swing-app" && mvn clean package -q)
@@ -18,8 +17,13 @@ echo "Building production Vaadin jar (runs build-frontend / Vite)..."
 (cd "$ROOT/vaadin-app" && mvn clean package -q)
 
 # Resolve the local Maven repo so we can point --patch-module / bootclasspath
-# at the swing-bridge jars.
+# at the swing-bridge jars. SB_VERSION is read from the pom rather than
+# hardcoded here: the patch/graphics jars MUST match the swing-bridge-flow
+# version packaged into the fat jar, and a hardcoded copy silently drifts
+# the moment the pom is upgraded.
 REPO="$(cd "$ROOT/vaadin-app" && mvn help:evaluate -Dexpression=settings.localRepository -q -DforceStdout)"
+SB_VERSION="$(cd "$ROOT/vaadin-app" && mvn help:evaluate -Dexpression=swing-bridge.version -q -DforceStdout)"
+echo "SwingBridge version from pom: $SB_VERSION"
 
 # application.properties sets server.port=${PORT:8888}, so mirror that default.
 echo "Starting Vaadin app in PRODUCTION mode on http://localhost:${PORT:-8888} ..."
