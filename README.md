@@ -1,9 +1,13 @@
 # WarehousePro — Vaadin Swing Bridge Demo
 
-A three-stage migration demo showing how a legacy Java Swing desktop application
+A four-stage migration demo showing how a legacy Java Swing desktop application
 (**WarehousePro 3.5**) can be modernised to run in the browser using the
 [Vaadin Swing Bridge](https://vaadin.com/swing-bridge), without rewriting the
 existing UI code.
+
+This branch takes the shell and the views to **React/Hilla**: the application
+shell, the login page, the modern dashboard and the Suppliers view are React,
+while the bridged Swing panels keep running inside them.
 
 ---
 
@@ -12,8 +16,7 @@ existing UI code.
 | Module | Description |
 |---|---|
 | `swing-app` | The original Swing desktop application |
-| `vaadin-app` | The Vaadin Spring Boot host application |
-| `shared-api` | Event and publisher interfaces shared across both runtimes |
+| `vaadin-app` | The Vaadin Spring Boot host application (Flow + Hilla/React) |
 
 ---
 
@@ -35,7 +38,8 @@ Login: `admin / admin` or `manager / manager`.
 ```
 
 Builds the Swing JAR, copies it to `vaadin-app/applibs/`, then starts the
-Spring Boot server. Open `http://localhost:8080` in a browser.
+Spring Boot server. Open `http://localhost:8888` in a browser.
+Login: `admin / admin`, `manager / manager`, or `viewer / viewer`.
 
 ---
 
@@ -48,91 +52,87 @@ The bridge launches the Swing `MainFrame` as a headless server-side process and
 streams its pixels to the browser. Users interact with the full Swing UI as if
 it were a native desktop app.
 
+It renders full-bleed and is not behind the React login — the Swing application
+brings its own sign-in screen. `views/@layout.tsx` deliberately steps aside for
+this one route.
+
 **What to point out:** the complete Swing application running in a browser tab,
 with no code changes on the Swing side.
 
 ---
 
-## Stage 2 — Vaadin foundation (`/dashboard`, `/products`, `/orders`, `/stock`)
+## Stage 2 — React shell (`/dashboard`, `/products`, `/orders`, `/stock`)
 
-The application shell has been replaced with native Vaadin components while the
-per-tab Swing panels are still embedded via the bridge.
+The application shell is React, while the per-view Swing panels are still
+embedded via the bridge.
 
-What is already Vaadin-native:
+- **Login page** — `src/main/frontend/auth/LoginPage.tsx`, authenticating through
+  `AuthService` against the existing Hibernate `User` entity.
+- **App shell** — `src/main/frontend/views/@layout.tsx`, a React `AppLayout` with
+  `SideNav` and a user/logout menu. `routes.tsx` registers `Flow` as the fallback
+  for every branch, which is what lets the Java views render inside it.
+- **Per-view bridge frames** — `DashboardView`, `ProductsView`, `OrdersView` and
+  `StockView` are still Flow views, each embedding its Swing panel through a
+  bridge class (`DashboardBridge`, `ProductsBridge`, …) in `swing-app/src/…/bridge/`.
 
-- **Login screen** (`LoginView`) — Vaadin form backed by the existing Hibernate
-  `User` entity and `AppSession`.
-- **App shell** (`MainLayout`) — Vaadin `AppLayout` with `SideNav`, `DrawerToggle`,
-  and a user avatar/logout menu. Navigation is handled by the Vaadin router.
-- **Per-view bridge frames** — each view (`DashboardView`, `ProductsView`,
-  `OrdersView`, `StockView`) embeds its corresponding Swing panel through a
-  dedicated bridge class (`DashboardBridge`, `ProductsBridge`, …) that lives in
-  `swing-app/src/…/bridge/`.
+**What to point out:** the chrome is React; the content area still shows Swing.
 
-**What to point out:** the browser chrome is now fully Vaadin; only the content
-area still shows Swing panels.
+---
+
+## Stage 2b — A native React view (`/dashboard-modern`)
+
+`views/dashboard-modern.tsx` rebuilds the dashboard in React — KPI tiles, Vaadin
+Charts and a Grid — reading the same data through `DashboardService`, a
+`@BrowserCallable` service that wraps the legacy Swing services.
 
 ---
 
 ## Stage 3 — Interoperability (`/suppliers`)
 
-The Suppliers view demonstrates **bidirectional communication** between the
-Vaadin toolbar and a Swing table, using the `shared-api` module as the
-contract layer.
+The Suppliers view demonstrates **bidirectional communication** between a React
+toolbar and a Swing table, using the official Swing Bridge interop API — not a
+hand-rolled event bus.
 
 ### Module layout
 
 ```
-shared-api/
-└── com/example/warehouse/shared/
-    ├── SupplierSelectionEvent.java   # fired when a row is selected (id=null → deselect)
-    ├── SupplierEditRequestEvent.java # fired on double-click in the Swing table
-    └── SwingEventPublisher.java      # functional interface: publish(Object event)
-
 swing-app/
 └── com/example/warehouse/bridge/
-    └── SuppliersTableFrame.java      # table-only JFrame; no toolbar
+    ├── SuppliersBridge.java              # the Swing suppliers table
+    ├── SupplierSelectedEvent.java        # fired on row selection (id=null → deselect)
+    └── SupplierEditRequestEvent.java     # fired on double-click in the Swing table
 
 vaadin-app/
-└── com/example/views/
-    └── SuppliersView.java            # Vaadin toolbar + SwingEventBridge
+├── com/example/suppliers/
+│   ├── SupplierBridgePanel.java          # the SwingBridge, plus the @VaadinCallback handlers
+│   ├── SupplierBridgeExporter.java       # exports it as <supplier-bridge>
+│   ├── SupplierEndpoint.java             # @BrowserCallable CRUD
+│   └── SupplierRecord.java
+└── src/main/frontend/views/suppliers.tsx # React toolbar, dialogs and CRUD
 ```
 
 ### How it works
 
-**Vaadin → Swing (method calls)**
+`SwingBridge` extends `Div` — it is a server-side Flow component with no custom
+element, so React cannot render one directly. `SupplierBridgeExporter` exports it
+as a web component, and the React view places it with
+`reactElement('supplier-bridge')`. Everything around it is ordinary React.
 
-`SwingEventBridge.callSwingMethod(name, args…)` invokes a public method on the
-Swing frame from the Vaadin UI thread. Used for:
+Two channels, and they are not interchangeable:
 
-| Vaadin action | Swing method called |
+| Concern | Path |
 |---|---|
-| Refresh button | `SuppliersTableFrame.refreshTable()` |
-| Search field | `SuppliersTableFrame.setFilter(String)` |
-| After save/delete | `SuppliersTableFrame.refreshTable()` |
+| Supplier CRUD + CSV | React → `SupplierEndpoint` over Hilla, typed client, no Flow involved |
+| Bridge commands | React → exported properties. `filter` drives the Swing filter; `refreshToken` is a counter React increments to request a reload |
+| Selection, edit requests | Swing → `@VaadinCallback` → `webComponent.fireEvent(...)` → DOM events in React |
 
-The **Export CSV** button is handled entirely on the Vaadin side: `SuppliersView`
-reads the data via `SupplierService`, builds the CSV in-memory, and delivers it
-as a browser file download using a `StreamResource` + `Anchor`. No Swing
-involved.
+So a save is two steps: write through the endpoint, then bump `refreshToken` so
+the Swing table reloads.
 
-**Swing → Vaadin (events)**
-
-The Swing frame holds `SwingEventPublisher` references injected by the bridge
-at startup via setter methods. When the user interacts with the Swing table,
-events are published and the bridge converts them across the classloader
-boundary into the Vaadin-side equivalents:
-
-| User action | Event published | Vaadin reaction |
-|---|---|---|
-| Row selected | `SupplierSelectionEvent` (with data) | Enable Edit + Delete buttons, store selection |
-| Row deselected | `SupplierSelectionEvent` (id = null) | Disable Edit + Delete buttons |
-| Double-click row | `SupplierEditRequestEvent` | Open Edit form pre-filled |
-
-**What to point out:** the Vaadin toolbar and the Swing table react to each
-other in real time — row selection enables/disables buttons, edits made in the
-Vaadin dialog refresh the Swing table, and the search field filters the Swing
-table live.
+**What to point out:** the React toolbar and the Swing table react to each other
+in real time — row selection enables/disables buttons, a double-click in the
+Swing table opens the React dialog, edits refresh the Swing table, and the search
+field filters it live.
 
 ---
 
@@ -141,10 +141,12 @@ table live.
 | Layer | Technology |
 |---|---|
 | Swing UI | Java Swing, Nimbus L&F |
-| Charts | JFreeChart 1.5 |
+| Charts | JFreeChart 1.5 (Swing) / Vaadin Charts (web) |
 | ORM | Hibernate 6.4 / Jakarta Persistence |
 | Database | H2 embedded (file-based) |
-| Vaadin | Vaadin 25.1, Aura theme |
-| Spring Boot | 4.0 |
-| Java | 17 |
+| Vaadin | Vaadin 25.2, Aura theme |
+| React views | Hilla (`hilla-spring-boot-starter`), file-based routing |
+| Swing Bridge | 1.3.0 |
+| Spring Boot | 4.1 |
+| Java | swing-app 17, vaadin-app 21 |
 | Build | Maven 3 |

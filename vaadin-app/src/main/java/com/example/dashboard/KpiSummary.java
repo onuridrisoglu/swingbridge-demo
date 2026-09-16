@@ -1,5 +1,7 @@
 package com.example.dashboard;
 
+import org.jspecify.annotations.NonNull;
+
 import java.math.BigDecimal;
 
 /**
@@ -9,7 +11,7 @@ import java.math.BigDecimal;
  */
 public record KpiSummary(
         long totalProducts,
-        BigDecimal inventoryValue,
+        @NonNull BigDecimal inventoryValue,
         long pendingOrders,
         long lowStockCount) {
 }

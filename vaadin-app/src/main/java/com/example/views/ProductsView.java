@@ -5,7 +5,7 @@ import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.router.Route;
 import com.vaadin.swingbridge.SwingBridge;
 
-@Route(value = "products", layout = MainLayout.class)
+@Route("products")
 public class ProductsView extends Div {
 
     private static final String MAIN_CLASS = "com.example.warehouse.bridge.BridgeMain";
