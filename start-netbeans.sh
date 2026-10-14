@@ -2,15 +2,16 @@
 set -e
 
 # Builds and launches the NetBeans Platform (RCP) edition of WarehousePro.
-# The NetBeans Platform launches on JDK 17 here for maximum compatibility;
-# override by exporting JAVA_HOME before running.
+# Launches on JDK 21, the same JDK the SwingBridge host (start-vaadin.sh)
+# needs. The NetBeans Platform installs a Security Manager, which JDK 24+ removed;
+# on 21 it's enabled via -Djava.security.manager=allow in warehousepro.conf.
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 
-# Prefer a JDK 17 if one is discoverable; otherwise use the current JAVA_HOME / PATH java.
-if [ -z "${JAVA_HOME:-}" ] && command -v /usr/libexec/java_home >/dev/null 2>&1; then
-    if J17="$(/usr/libexec/java_home -v 17 2>/dev/null)"; then
-        export JAVA_HOME="$J17"
+# Use JDK 21 if one is discoverable; otherwise fall back to the current JAVA_HOME / PATH java.
+if command -v /usr/libexec/java_home >/dev/null 2>&1; then
+    if J21="$(/usr/libexec/java_home -v 21 2>/dev/null)"; then
+        export JAVA_HOME="$J21"
     fi
 fi
 echo "Using JAVA_HOME=${JAVA_HOME:-<default on PATH>}"

@@ -5,24 +5,33 @@ import com.example.warehouse.dao.UserDAO;
 import com.example.warehouse.model.User;
 import com.example.warehouse.seed.DataSeeder;
 import com.example.warehouse.ui.util.Status;
+import com.example.warehouse.ui.util.UserStatusLineElement;
 import com.example.warehouse.AppSession;
 import org.openide.LifecycleManager;
 import org.openide.modules.OnStart;
+import org.openide.windows.TopComponent;
+import org.openide.windows.WindowManager;
 
-import javax.swing.SwingUtilities;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
  * Startup sequence for the WarehousePro RCP app, mirroring what {@code Main.main()}
  * did in the Swing edition: initialise the embedded H2 database, seed demo data,
- * then present the login screen <em>before</em> the main window appears.
+ * then present the login screen.
  *
- * <p>{@code @OnStart} runnables run during startup and are guaranteed to finish
- * <strong>before</strong> the main window is shown, so showing the modal login
- * dialog here (via {@code invokeAndWait}) gates the whole application — exactly
- * like the Swing {@code LoginFrame} did. If authentication is cancelled or fails,
- * the platform shuts down before any window is displayed.</p>
+ * <p>The modal login dialog is shown once the main window is up
+ * ({@link WindowManager#invokeWhenUIReady}), owned by it, rather than from the
+ * {@code @OnStart} runnable itself: an owner-less dialog shown before the main window
+ * exists blocks the platform from ever opening that window, which the Vaadin Swing
+ * Bridge waits for before it streams anything — the browser would hang on a dialog it
+ * cannot see. If authentication is cancelled or fails, the platform shuts down.</p>
+ *
+ * <p>The five screens are registered with {@code openAtStartup = false} and opened
+ * here only after a successful login, so nothing but the empty main window is
+ * visible behind the login dialog. In bridge mode they stay closed: the Vaadin host
+ * pulls each one into its own route via {@code embedTopComponent}, which looks them
+ * up by ID whether or not they are open.</p>
  *
  * <p>The thread context class loader is pinned to this module's loader while
  * Hibernate boots so the JPA provider, {@code persistence.xml} and entity classes
@@ -37,6 +46,11 @@ public final class DatabaseStartup implements Runnable {
      *  embedded in the browser. In that mode the desktop login dialog is skipped. */
     private static final boolean BRIDGE_MODE = Boolean.getBoolean("warehouse.bridge");
 
+    /** Screens opened after login, in tab order; the first one ends up active. */
+    private static final String[] SCREENS = {
+            "DashboardTopComponent", "ProductsTopComponent", "SuppliersTopComponent",
+            "OrdersTopComponent", "StockTopComponent"};
+
     @Override
     public void run() {
         initDatabase();
@@ -49,13 +63,38 @@ public final class DatabaseStartup implements Runnable {
             return;
         }
 
-        boolean authenticated = showLogin();
+        WindowManager.getDefault().invokeWhenUIReady(DatabaseStartup::login);
+    }
+
+    /** Runs on the EDT once the main window is showing. */
+    private static void login() {
+        boolean authenticated = LoginDialog.authenticate(WindowManager.getDefault().getMainWindow());
         if (!authenticated) {
             LifecycleManager.getDefault().exit();
             return;
         }
+        UserStatusLineElement.refreshAll();
+        openScreens();
         Status.message("Signed in as " + AppSession.getCurrentUser().getFullName()
                 + "  [" + AppSession.getCurrentUser().getRole() + "]");
+    }
+
+    private static void openScreens() {
+        TopComponent first = null;
+        for (String id : SCREENS) {
+            TopComponent tc = WindowManager.getDefault().findTopComponent(id);
+            if (tc == null) {
+                LOG.warning("TopComponent not found: " + id);
+                continue;
+            }
+            tc.open();
+            if (first == null) {
+                first = tc;
+            }
+        }
+        if (first != null) {
+            first.requestActive();
+        }
     }
 
     private void autoLoginForBridge() {
@@ -79,15 +118,5 @@ public final class DatabaseStartup implements Runnable {
         } finally {
             thread.setContextClassLoader(previous);
         }
-    }
-
-    private boolean showLogin() {
-        final boolean[] ok = {false};
-        try {
-            SwingUtilities.invokeAndWait(() -> ok[0] = LoginDialog.authenticate());
-        } catch (Exception e) {
-            LOG.log(Level.WARNING, "Login dialog failed", e);
-        }
-        return ok[0];
     }
 }

@@ -3,10 +3,12 @@ package com.example.warehouse.actions;
 import com.example.warehouse.AppSession;
 import com.example.warehouse.startup.LoginDialog;
 import com.example.warehouse.ui.util.Status;
+import com.example.warehouse.ui.util.UserStatusLineElement;
 import org.openide.LifecycleManager;
 import org.openide.awt.ActionID;
 import org.openide.awt.ActionReference;
 import org.openide.awt.ActionRegistration;
+import org.openide.windows.WindowManager;
 
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -24,7 +26,7 @@ public final class LogoutAction implements ActionListener {
     @Override
     public void actionPerformed(ActionEvent e) {
         AppSession.logout();
-        boolean reauthenticated = LoginDialog.authenticate();
+        boolean reauthenticated = LoginDialog.authenticate(WindowManager.getDefault().getMainWindow());
         if (!reauthenticated) {
             LifecycleManager.getDefault().exit();
             return;

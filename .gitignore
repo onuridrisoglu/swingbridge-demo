@@ -18,10 +18,8 @@ vaadin-app/pnpm-lock.yaml
 .vscode/
 .DS_Store
 
-# vaadin-app-nb embedded RCP distribution + domain jar (build-copied)
-vaadin-app-nb/applibs/
-vaadin-app-nb/lib/
+# Embedded NetBeans RCP distribution (copied by start-vaadin.sh)
+vaadin-app/applibs/
 
-# vaadin-app-nb Vaadin frontend build artifacts (regenerated on build)
-vaadin-app-nb/src/main/frontend/generated/
-vaadin-app-nb/src/main/bundles/
+# Vaadin frontend build artifacts (regenerated on build)
+vaadin-app/src/main/frontend/generated/

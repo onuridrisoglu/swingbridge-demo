@@ -36,7 +36,7 @@ import java.util.List;
 @TopComponent.Description(
         preferredID = "ProductsTopComponent",
         persistenceType = TopComponent.PERSISTENCE_NEVER)
-@TopComponent.Registration(mode = "editor", openAtStartup = true, position = 200)
+@TopComponent.Registration(mode = "editor", openAtStartup = false, position = 200)
 @ActionID(category = "Window", id = "com.example.warehouse.ui.products.ProductsTopComponent")
 @ActionReference(path = "Menu/Window", position = 3308)
 @TopComponent.OpenActionRegistration(displayName = "Products", preferredID = "ProductsTopComponent")

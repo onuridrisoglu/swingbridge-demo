@@ -1,5 +1,6 @@
 package com.example.views;
 
+import com.example.rcp.RcpMode;
 import com.example.warehouse.AppSession;
 import com.example.warehouse.dao.UserDAO;
 import com.example.warehouse.model.User;
@@ -22,7 +23,10 @@ import com.vaadin.flow.server.VaadinSession;
 @Route("login")
 public class LoginView extends Div {
 
-    public LoginView() {
+    private final RcpMode rcpMode;
+
+    public LoginView(RcpMode rcpMode) {
+        this.rcpMode = rcpMode;
         addClassName("login-view");
         // Inline styles guarantee dark background wins over Lumo defaults
         getStyle()
@@ -239,7 +243,7 @@ public class LoginView extends Div {
         } else {
             VaadinSession.getCurrent().setAttribute("user", user);
             AppSession.login(user);
-            UI.getCurrent().navigate("dashboard");
+            UI.getCurrent().navigate(rcpMode.homeRoute());
         }
     }
 }

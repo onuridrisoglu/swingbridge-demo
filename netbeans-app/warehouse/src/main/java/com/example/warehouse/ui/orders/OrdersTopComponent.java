@@ -35,7 +35,7 @@ import java.util.Locale;
 @TopComponent.Description(
         preferredID = "OrdersTopComponent",
         persistenceType = TopComponent.PERSISTENCE_NEVER)
-@TopComponent.Registration(mode = "editor", openAtStartup = true, position = 400)
+@TopComponent.Registration(mode = "editor", openAtStartup = false, position = 400)
 @ActionID(category = "Window", id = "com.example.warehouse.ui.orders.OrdersTopComponent")
 @ActionReference(path = "Menu/Window", position = 3322)
 @TopComponent.OpenActionRegistration(displayName = "Orders", preferredID = "OrdersTopComponent")

@@ -13,6 +13,7 @@ import java.awt.FlowLayout;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import org.openide.awt.StatusLineElementProvider;
+import org.openide.util.Lookup;
 import org.openide.util.lookup.ServiceProvider;
 
 /**
@@ -41,6 +42,15 @@ public final class UserStatusLineElement implements StatusLineElementProvider {
         refresh();
         Timer clock = new Timer(30_000, e -> refresh());
         clock.start();
+    }
+
+    /** Updates the user label right away (e.g. after sign-in) instead of on the next clock tick. */
+    public static void refreshAll() {
+        for (StatusLineElementProvider p : Lookup.getDefault().lookupAll(StatusLineElementProvider.class)) {
+            if (p instanceof UserStatusLineElement element) {
+                element.refresh();
+            }
+        }
     }
 
     private void refresh() {

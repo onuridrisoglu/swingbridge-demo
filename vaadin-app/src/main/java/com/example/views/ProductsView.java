@@ -1,22 +1,15 @@
 package com.example.views;
 
-import com.example.warehouse.ui.MainFrameBridge;
+import com.example.rcp.RcpMode;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.router.Route;
-import com.vaadin.swingbridge.SwingBridge;
 
+/** Stage 2 — the Products {@code TopComponent} embedded in the Vaadin shell. */
 @Route(value = "products", layout = MainLayout.class)
 public class ProductsView extends Div {
 
-    private static final String MAIN_CLASS = "com.example.warehouse.bridge.BridgeMain";
-
-    public ProductsView() {
+    public ProductsView(RcpMode rcpMode) {
         setSizeFull();
-        SwingBridge bridge = new SwingBridge(MAIN_CLASS);
-        add(bridge);
-
-        SwingBridge.interop(MAIN_CLASS)
-                   .of(MainFrameBridge.class)
-                   .onReady(MainFrameBridge::showProducts);
+        add(rcpMode.topComponent("ProductsTopComponent"));
     }
 }

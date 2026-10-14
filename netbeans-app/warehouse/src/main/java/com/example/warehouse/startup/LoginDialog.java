@@ -62,13 +62,13 @@ public final class LoginDialog extends JDialog {
     /**
      * Shows the dialog and blocks until the user signs in or cancels.
      *
+     * @param owner the platform main window
      * @return {@code true} if a user was authenticated and stored in {@link AppSession}
      */
-    public static boolean authenticate() {
-        // Standalone owner-less modal dialog: shown during @OnStart it appears on its
-        // own (centered on screen) before the main window is materialised, matching the
-        // Swing LoginFrame → MainFrame flow.
-        LoginDialog dialog = new LoginDialog(null);
+    public static boolean authenticate(Window owner) {
+        // Owned by the platform main window: the Vaadin Swing Bridge streams the main
+        // window and its children, so an owner-less dialog wouldn't reach the browser.
+        LoginDialog dialog = new LoginDialog(owner);
         dialog.usernameField.requestFocusInWindow();
         dialog.setVisible(true); // blocks (modal)
         return dialog.authenticated;

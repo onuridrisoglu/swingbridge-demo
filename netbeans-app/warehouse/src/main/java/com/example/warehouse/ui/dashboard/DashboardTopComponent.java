@@ -43,7 +43,7 @@ import java.util.Locale;
 @TopComponent.Description(
         preferredID = "DashboardTopComponent",
         persistenceType = TopComponent.PERSISTENCE_NEVER)
-@TopComponent.Registration(mode = "editor", openAtStartup = true, position = 100)
+@TopComponent.Registration(mode = "editor", openAtStartup = false, position = 100)
 @ActionID(category = "Window", id = "com.example.warehouse.ui.dashboard.DashboardTopComponent")
 @ActionReference(path = "Menu/Window", position = 3301)
 @TopComponent.OpenActionRegistration(displayName = "Dashboard", preferredID = "DashboardTopComponent")

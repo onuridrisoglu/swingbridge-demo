@@ -1,28 +1,17 @@
-# WarehousePro Demo — Context for Claude
+# WarehousePro Demo (NetBeans Platform edition) — Context for Claude
 
 ## What this project is
-A Swing → Vaadin migration demo showing enterprise Java developers how a legacy
-Swing desktop app can be modernised to run in the browser using the Vaadin Swing
-Bridge. The demo has four stages:
-1. **Full bridge wrap** — the entire Swing app served at `/`.
-2. **Vaadin shell + bridged tabs** — native Vaadin shell, each tab still a Swing
-   panel embedded via the bridge (`/dashboard`, `/products`, `/orders`, `/stock`).
-3. **Two-way interop** — Vaadin toolbar ↔ Swing table on `/suppliers`.
+A NetBeans Platform (RCP) → Vaadin migration demo showing enterprise Java developers
+how a legacy NetBeans RCP desktop app can be modernised to run in the browser using
+the Vaadin Swing Bridge's `NetBeansRcpBridge`. This branch is the RCP counterpart of
+the plain-Swing demo on `main`. Stages:
+1. **Full bridge wrap** — the entire, unchanged RCP shell served at `/` (`full` mode).
+2. **Vaadin shell + bridged TopComponents** — native Vaadin shell, each route one RCP
+   `TopComponent` embedded via the bridge (`/dashboard`, `/products`, `/suppliers`,
+   `/orders`, `/stock`; `views` mode).
+3. *(Two-way interop is omitted — the RCP bridge has no `@ExposedMethod` equivalent.)*
 4. **Native Vaadin rebuild** — the dashboard re-implemented in pure Vaadin on
-   `/dashboard-modern`.
-
-A third app, `netbeans-app`, is a parallel "before" state: the **same**
-WarehousePro application rebuilt on the **NetBeans Platform (RCP)** — screens are
-`TopComponent`s in the platform window system, login runs from `@OnStart`, and the
-domain layer is reused verbatim. See `netbeans-app/README.md`.
-
-A fourth module, `vaadin-app-nb`, is the NetBeans-RCP counterpart of `vaadin-app`:
-a Vaadin/Spring Boot host that embeds the `netbeans-app` distribution via
-`com.vaadin.swingbridge.NetBeansRcpBridge` (SwingBridge **1.2.0**) — full shell at
-`/`, one bridged `TopComponent` per route under a Vaadin shell, and a native
-`/dashboard-modern`. The embedded RCP runs with `-Dwarehouse.bridge=true` so its
-`@OnStart` skips the desktop login (the Vaadin `LoginView` authenticates instead).
-Requires **JDK 21**. See `vaadin-app-nb/README.md`.
+   `/dashboard-modern` (works in both modes).
 
 ## Project structure
 ```
@@ -30,103 +19,76 @@ warehouse-demo/
 ├── .gitignore
 ├── README.md                  ← developer-facing project overview
 ├── CLAUDE.md                  ← you are here
-├── SPEC.md                    ← full feature spec for the Swing app ("before" state)
-├── pom.xml                    ← Maven aggregator over swing-app + vaadin-app
-├── start-swing.sh             ← builds + runs the Swing desktop app
-├── start-vaadin.sh            ← builds Swing jar, copies it, starts Vaadin app
-├── swing-app/                 ← the Swing application (WarehousePro 3.5)
-│   ├── pom.xml                ← Java 17, Maven, Hibernate 6.4, H2, JFreeChart 1.5
-│   └── src/main/java/com/example/warehouse/
-│       ├── Main.java          ← entry point: Nimbus L&F, inits DB, seeds data, opens LoginFrame
-│       ├── AppSession.java    ← static current-user holder
-│       ├── config/PersistenceUtil.java    ← Hibernate EntityManagerFactory (H2 embedded)
-│       ├── model/             ← JPA entities: User, Category, Supplier, Product, PurchaseOrder, PurchaseOrderItem, StockMovement
-│       ├── dao/               ← plain Hibernate DAOs (no Spring): one per entity
-│       ├── service/           ← ProductService, SupplierService, PurchaseOrderService
-│       ├── seed/DataSeeder.java  ← seeds 3 users, 5 categories, 6 suppliers, 30 products (6 low-stock), 10 orders, 25 movements
-│       ├── bridge/            ← bridge entry points + interop contract types
-│       │   ├── BridgeMain.java       ← launches the full MainFrame (the main class ALL bridge views use)
-│       │   ├── BridgeUtil.java       ← shared init (DB + L&F) for bridge entry points
-│       │   ├── DashboardBridge.java  ← standalone per-tab launchers (alt entry points; views use BridgeMain)
-│       │   ├── ProductsBridge.java
-│       │   ├── OrdersBridge.java
-│       │   ├── StockBridge.java
-│       │   ├── SuppliersBridge.java  ← standalone SuppliersPanel launcher
-│       │   ├── SupplierSelectedEvent.java / SupplierSelectionListener.java   ← row selection (id=null → deselect)
-│       │   └── SupplierEditRequestEvent.java / SupplierEditRequestListener.java  ← row double-click
-│       └── ui/
-│           ├── LoginFrame.java
-│           ├── MainFrame.java           ← JTabbedPane (5 tabs); @ExposedMethod showXxx()/refresh/filter for the bridge
-│           ├── util/UIConstants.java    ← shared colors, fonts, border factories; styleTable() sets SINGLE_SELECTION
-│           ├── util/StatusBar.java
-│           ├── util/TableExporter.java
-│           ├── dashboard/DashboardPanel.java
-│           ├── products/ProductsPanel.java
-│           ├── products/ProductDialog.java
-│           ├── suppliers/SuppliersPanel.java
-│           ├── suppliers/SupplierDialog.java
-│           ├── orders/PurchaseOrdersPanel.java
-│           ├── orders/PurchaseOrderDialog.java  ← reentrancy guard on updateTotal()
-│           └── stock/StockMovementsPanel.java
-└── vaadin-app/                ← Vaadin 25.1 Spring Boot host (Aura theme)
-    ├── pom.xml                ← Spring Boot 4, Vaadin 25.1, Aura theme, Vaadin Swing Bridge
-    ├── applibs/               ← warehouse-swing-app-3.5.0.jar (copied by start-vaadin.sh)
+├── SPEC.md                    ← full feature spec of the WarehousePro app ("before" state)
+├── pom.xml                    ← Maven aggregator: netbeans-app, then vaadin-app
+├── start-netbeans.sh / .bat   ← builds + runs the NetBeans desktop app
+├── start-vaadin.sh / .bat     ← builds netbeans-app, copies its distribution, starts vaadin-app [full|views]
+├── netbeans-app/              ← WarehousePro on the NetBeans Platform 25 (see netbeans-app/README.md)
+│   ├── pom.xml                ← parent: NetBeans RELEASE250 + plugin versions
+│   ├── application/           ← branded platform application (distribution in target/warehousepro)
+│   │   └── src/main/etc/warehousepro.conf  ← launcher conf: --add-opens/exports, -Djava.security.manager=allow
+│   └── warehouse/             ← the module (code-name base com.example.warehouse)
+│       ├── pom.xml            ← nbm packaging; also attaches a plain "domain" classifier jar
+│       └── src/main/java/com/example/warehouse/
+│           ├── AppSession, config/, model/, dao/, service/, seed/  ← domain layer (→ domain jar)
+│           ├── startup/DatabaseStartup.java  ← @OnStart: init H2 + seed; once the main window is up,
+│           │                                   login dialog, then opens the 5 TopComponents
+│           │                                   (login + opening skipped when -Dwarehouse.bridge=true)
+│           ├── startup/LoginDialog.java
+│           ├── actions/LogoutAction.java
+│           └── ui/{dashboard,products,suppliers,orders,stock}/  ← TopComponents + dialogs; ui/util
+└── vaadin-app/                ← Vaadin 25.3 Spring Boot host (Aura theme), port 8888
+    ├── pom.xml                ← Spring Boot 4.1, Vaadin 25.3, SwingBridge 1.3.0; depends on
+    │                            com.example:warehouse:3.5.0:domain (all transitive deps excluded)
+    ├── applibs/warehousepro/  ← RCP distribution (copied by start-vaadin.sh, git-ignored)
     └── src/main/java/com/example/
-        ├── Application.java            ← Spring Boot main
-        ├── SwingAppInitializer.java    ← @PostConstruct: inits H2 + seeds demo data
-        ├── dashboard/                  ← native read model for the modern dashboard
-        │   ├── DashboardService.java   ← @Service wrapping ProductService/PurchaseOrderService
-        │   └── KpiSummary / CategoryStock / LowStockItem / OrderStatusCount  ← typed records
-        ├── swingbridge/ui/WarehouseView.java  ← Stage 1: wraps com.example.warehouse.Main at "/"
+        ├── Application.java          ← @SpringBootApplication, @Push, Aura stylesheet
+        ├── SwingAppInitializer.java  ← @PostConstruct: inits H2 + seeds demo data
+        ├── dashboard/                ← DashboardService + KpiSummary, CategoryStock, LowStockItem, OrderStatusCount
+        ├── rcp/RcpMode.java          ← warehouse.rcp.mode (full|views); builds the bridge or a placeholder;
+        │                               sets warehouse.bridge=true only in views mode
+        ├── rcp/WarehouseRcpView.java ← Stage 1: full RCP shell at "/" (no Vaadin login); forwards to
+        │                               /dashboard in views mode
         └── views/
-            ├── LoginView.java       ← Vaadin login form, authenticates via Hibernate User entity
-            ├── MainLayout.java      ← AppLayout + SideNav (Barlow font, filled variant, Aura theme)
-            ├── DashboardView.java   ← embeds MainFrame via SwingBridge, calls showDashboard()
-            ├── ProductsView.java    ← embeds MainFrame, calls showProducts()
-            ├── OrdersView.java      ← embeds MainFrame, calls showOrders()
-            ├── StockView.java       ← embeds MainFrame, calls showStock()
-            ├── SuppliersView.java   ← Vaadin toolbar + two-way interop (Stage 3)
-            └── DashboardModernView.java ← native Vaadin dashboard, no bridge (Stage 4)
+            ├── LoginView.java        ← Vaadin login (views mode), navigates to RcpMode.homeRoute()
+            ├── MainLayout.java       ← AppLayout + SideNav (Barlow font, filled variant)
+            ├── DashboardView, ProductsView, SuppliersView, OrdersView, StockView
+            │                         ← Stage 2: rcpMode.topComponent("XxxTopComponent")
+            └── DashboardModernView.java ← Stage 4: native Vaadin dashboard, no bridge
 ```
 
 ## How to run
 
-### Swing desktop app
-```bash
-./start-swing.sh
-```
-
-### Vaadin app (all demo stages)
-```bash
-./start-vaadin.sh
-```
-Builds the Swing JAR, copies it to `vaadin-app/applibs/`, then starts Spring Boot.
-Open `http://localhost:8080`.
-
-Login: `admin / admin` or `manager / manager`
-
-### NetBeans Platform (RCP) app
+### NetBeans desktop app
 ```bash
 ./start-netbeans.sh
 ```
 Builds the NetBeans Platform app (first build downloads the platform cluster) and
-launches it via `nbm:run-platform`. Uses JDK 17. Login: `admin / admin` or
-`manager / manager`.
+launches it via `nbm:run-platform`. Login: `admin / admin` or `manager / manager`.
+
+### Vaadin app
+```bash
+./start-vaadin.sh          # mode from application.properties (full by default)
+./start-vaadin.sh views    # override: views mode
+```
+Builds `netbeans-app` (`mvn install`, which also installs the domain jar), copies the
+distribution to `vaadin-app/applibs/warehousepro/`, then runs `spring-boot:run` with
+`--warehouse.rcp.mode=<mode>`. Open `http://localhost:8888`.
 
 To reset data: delete `warehousedb.mv.db` in the relevant app directory and restart.
 
 ## Tech stack
 | Layer | Technology |
 |---|---|
-| Swing UI | Java Swing, Nimbus L&F (enterprise blue overrides) |
-| Swing charts | JFreeChart 1.5.4 |
-| Interop | Vaadin Swing Bridge (`com.vaadin.swingbridge`) |
+| Desktop UI | NetBeans Platform 25 (RCP), FlatLaf |
+| Desktop charts | JFreeChart 1.5.4 |
+| Bridge | Vaadin Swing Bridge 1.3.0 (`com.vaadin.swingbridge.NetBeansRcpBridge`) |
 | ORM | Hibernate 6.4 / jakarta.persistence |
-| Database | H2 embedded (file-based, no setup needed) |
-| Vaadin | 25.1, Aura theme, Spring Boot 4 |
+| Database | H2 embedded (file-based, `AUTO_SERVER=TRUE`, shared by host and RCP) |
+| Vaadin | 25.3, Aura theme, Spring Boot 4.1 |
 | Vaadin charts | Vaadin Charts + Vaadin `Dashboard` (modern view) |
 | Build | Maven 3.x |
-| Java | 17 |
+| Java | 21 |
 
 ## Domain model
 - **Product**: sku, name, category, supplier, unitPrice, quantity, reorderLevel, unit
@@ -135,10 +97,10 @@ To reset data: delete `warehousedb.mv.db` in the relevant app directory and rest
 - **PurchaseOrder**: supplier, orderDate, expectedDate, status (PENDING/ORDERED/DELIVERED/CANCELLED), items
 - **StockMovement**: product, movementType (IN/OUT/ADJUSTMENT), quantity, reason, date
 
-## Key Swing patterns (each maps to a Vaadin equivalent)
-| Swing | Vaadin |
+## Key RCP/Swing patterns (each maps to a Vaadin equivalent)
+| NetBeans RCP / Swing | Vaadin |
 |---|---|
-| `JTabbedPane` (MainFrame) | `AppLayout` + `SideNav` |
+| Platform window system + `TopComponent`s | `AppLayout` + `SideNav` + routes |
 | `JTable` + `TableRowSorter` | `Grid<T>` |
 | `RowFilter` live search | Grid data provider filter |
 | `JDialog` modal form | `Dialog` + `FormLayout` |
@@ -148,25 +110,35 @@ To reset data: delete `warehousedb.mv.db` in the relevant app directory and rest
 | `JSplitPane` | `SplitLayout` |
 | Custom `TableCellRenderer` | Grid column renderer |
 
-## How the Swing Bridge interop works (Stage 3)
-- **Exposing Swing methods**: methods on `MainFrame` are annotated `@ExposedMethod`
-  (`com.vaadin.swingbridge.interop.ExposedMethod`). At build time the bridge
-  annotation processor generates a typed `MainFrameBridge` interface (into
-  `vaadin-app/target/generated-sources/swing-bridge/`) plus a proxy + metadata.
-- **Vaadin → Swing (typed calls)**: the view gets a handle via
-  `SwingBridge.interop(MAIN_CLASS).of(MainFrameBridge.class)` and invokes typed
-  methods, e.g. `handle.onReady(MainFrameBridge::refreshSuppliers)` or
-  `handle.onReady(b -> b.setSupplierFilter(text))`. No reflection / no string method names.
-- **Swing → Vaadin (events)**: the Swing side defines listener interfaces +
-  event POJOs in `swing-app/.../bridge/`. The Vaadin view registers with
-  `handle.registerCallback(this)` and annotates handlers with
-  `@VaadinCallback(observerFor = SupplierSelectionListener.class)` etc.
-
-## Notable implementation details
-- **Single selection**: all JTables use `ListSelectionModel.SINGLE_SELECTION` (set in `UIConstants.styleTable()`), avoiding multi-select confusion in the bridge.
-- **PurchaseOrderDialog**: `updateTotal()` has a reentrancy guard (`updatingTotal` flag) to prevent infinite recursion when `setValueAt()` fires the table model listener.
-- **Deselection events**: `SuppliersPanel` fires `SupplierSelectedEvent(null)` on row deselection; `SuppliersView` checks `event.id == null` to disable Edit/Delete.
-- **Shared Swing process**: all four bridged views point at `BridgeMain` (the full `MainFrame`) and switch the visible tab via the generated `showXxx()` methods.
-- **CSV export**: handled entirely on the Vaadin side — `SuppliersView` calls `SupplierService.exportToCsv()` and serves it via `DownloadHandler` + `Anchor`; the Swing table is not involved.
-- **Native dashboard (Stage 4)**: `DashboardModernView` uses no bridge — it reads `DashboardService` (typed records over the same H2 data) and renders with the Vaadin `Dashboard` component + Vaadin Charts, so its numbers match the Swing dashboard exactly.
-- **CSS**: uses Aura theme properties (`--aura-*`, `--vaadin-*`). `--lumo-*` variables are not used except where Aura inherits them implicitly.
+## Gotchas (learned the hard way)
+- **One bridge mode per session**: a full-shell bridge and `embedTopComponent` bridges
+  must not be mixed in one Vaadin session (single-TopComponent mode hides the platform
+  main window the shell needs). Hence `warehouse.rcp.mode`: all routes stay registered,
+  in views mode `/` forwards to `/dashboard`, in full mode the TopComponent routes render
+  a placeholder.
+- **No NetBeans module jars on the host classpath**: anything with an `OpenIDE-Module`
+  manifest (the module jar itself, or the `org-openide-*` API jars it depends on) is
+  picked up by the embedded platform as a duplicate module (`DuplicateException`), and
+  the real one is rejected — no `@OnStart`, empty shell. That's why the host uses the
+  `domain` classifier jar with `<exclusions>*:*</exclusions>`.
+- **JDK 21 only, and not JetBrains Runtime**: the platform needs the Security Manager
+  (`-Djava.security.manager=allow` on 21; gone on 24+). JBR's patched `java.desktop`
+  calls `PlatformGraphicsInfo.getSplashScreenLib()`, which the SwingBridge
+  `java.desktop` patch lacks, so the JVM exits when the platform boots. The start
+  scripts prefer a non-JBR JDK 21.
+- **No dialogs before the main window**: the NetBeans bridge streams nothing until the
+  platform main window (`NbMainWindow`) appears. A modal, owner-less dialog shown from
+  `@OnStart` (the original login) blocks the platform from ever opening that window, so
+  the browser loads forever. The login is therefore shown via
+  `WindowManager.invokeWhenUIReady`, owned by the main window, and the TopComponents
+  (`openAtStartup = false`) are opened after login. In views mode they stay closed —
+  `embedTopComponent` finds them by ID anyway.
+- **One NetBeans instance per HTTP session**: the bridge keys instances by HTTP session
+  id + main class, and `NetBeansRcpBridge` always uses `NetBeansLauncher`, so every
+  bridge in a session shares one platform. A custom class loader
+  (`createClassLoaderSupplier()`) doesn't change that; separate instances need separate
+  HTTP sessions.
+- **`warehouse.bridge`** is set at runtime by `RcpMode` (not in the pom), before the
+  platform boots: `true` in views mode (Vaadin login, RCP auto-signs-in as admin),
+  `false` in full mode (RCP shows its own login).
+- **CSS**: uses Aura theme properties (`--aura-*`, `--vaadin-*`).

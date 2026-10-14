@@ -107,6 +107,33 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
+                <executions>
+                    <!-- Plain jar of just the domain layer (entities, DAOs, services, seeder,
+                         persistence.xml), attached as classifier "domain" for the Vaadin host's
+                         own login + native dashboard. It must NOT carry the OpenIDE-Module
+                         manifest: on the host classpath the embedded platform would load it as
+                         a duplicate com.example.warehouse module and reject the real one. -->
+                    <execution>
+                        <id>domain-jar</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                        <configuration>
+                            <classifier>domain</classifier>
+                            <archive combine.self="override"/>
+                            <includes>
+                                <include>com/example/warehouse/AppSession*.class</include>
+                                <include>com/example/warehouse/config/**</include>
+                                <include>com/example/warehouse/dao/**</include>
+                                <include>com/example/warehouse/model/**</include>
+                                <include>com/example/warehouse/seed/**</include>
+                                <include>com/example/warehouse/service/**</include>
+                                <include>META-INF/persistence.xml</include>
+                            </includes>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>

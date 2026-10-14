@@ -6,8 +6,8 @@ domain model, same embedded H2 + Hibernate backend, same five screens and the sa
 behaviours — but built on the **NetBeans Platform** instead of being a hand-rolled
 `JFrame`/`JTabbedPane` Swing app.
 
-It sits alongside the `swing-app` (plain Swing) and `vaadin-app` (browser) editions
-as another realistic "before" rich client for migration demos.
+It is the "before" rich client of this branch's migration demo; [`../vaadin-app`](../vaadin-app)
+embeds it in the browser with the Vaadin Swing Bridge's `NetBeansRcpBridge`.
 
 ## How it maps to the NetBeans Platform
 
@@ -15,7 +15,7 @@ as another realistic "before" rich client for migration demos.
 |---|---|
 | `MainFrame` + `JTabbedPane` (5 tabs) | The platform **window system**; each screen is a `TopComponent` opened in the **`editor`** mode (the tabbed document area) |
 | `DashboardPanel`, `ProductsPanel`, … | `DashboardTopComponent`, `ProductsTopComponent`, `SuppliersTopComponent`, `OrdersTopComponent`, `StockTopComponent` |
-| `LoginFrame` shown before `MainFrame` | `LoginDialog` shown from an `@OnStart` runnable, which blocks the startup sequence **before** the main window appears |
+| `LoginFrame` shown before `MainFrame` | `LoginDialog`, owned by the main window, shown via `WindowManager.invokeWhenUIReady` once the (still empty) main window is up; the five `TopComponent`s (`openAtStartup = false`) are opened only after a successful login. Not shown straight from `@OnStart`: an owner-less dialog before the main window blocks the platform from opening it, so the SwingBridge never streams anything |
 | `Main.main()` DB init + seed | `@OnStart` `DatabaseStartup` (TCCL pinned to the module loader so Hibernate boots under the NetBeans classloader) |
 | Bottom `StatusBar` (message / user / clock) | The platform **status line** — `Status` pushes to `StatusDisplayer`; `UserStatusLineElement` (a `StatusLineElementProvider`) shows the user + clock |
 | `File ▸ Logout` / title-bar Logout | `LogoutAction` (`@ActionRegistration` in `Menu/File`) |
@@ -25,13 +25,13 @@ as another realistic "before" rich client for migration demos.
 
 The domain layer (`model`, `dao`, `service`, `config`, `seed`, `AppSession`) and the
 Swing helpers (`UIConstants`, `TableExporter`) are reused **verbatim** from the Swing
-edition.
+edition (on the `main` branch).
 
 ## Project layout (Maven, `nbm-maven-plugin`)
 
 ```
 netbeans-app/
-├── pom.xml            ← parent: pins NetBeans RELEASE250 + plugin versions, JDK 17
+├── pom.xml            ← parent: pins NetBeans RELEASE250 + plugin versions, compiles with --release 17
 ├── warehouse/         ← the application module (packaging: nbm)
 │   ├── pom.xml        ← depends on org.netbeans.api:* + bundles Hibernate/H2/JFreeChart
 │   └── src/main/
@@ -40,7 +40,7 @@ netbeans-app/
 │       └── nbm-branding/                   ← window-title / product-version branding
 └── application/       ← the assembly (packaging: nbm-application)
     ├── pom.xml        ← platform cluster + the warehouse module → a runnable, branded app
-    └── src/main/etc/warehousepro.conf      ← launcher conf (JDK 17+ --add-opens/--add-exports)
+    └── src/main/etc/warehousepro.conf      ← launcher conf (--add-opens/--add-exports, security.manager=allow)
 ```
 
 The non-NetBeans dependencies (Hibernate, H2, JFreeChart, SLF4J) are packaged into
@@ -59,7 +59,7 @@ Or directly:
 
 ```bash
 cd netbeans-app
-JAVA_HOME=$(/usr/libexec/java_home -v 17) mvn clean install
+JAVA_HOME=$(/usr/libexec/java_home -v 21) mvn clean install
 cd application
 mvn nbm:run-platform
 ```
@@ -71,12 +71,18 @@ on first run; delete it to reset demo data.
 
 ## Notes
 
-- **JDK 17** is used to build and launch. The custom `warehousepro.conf` supplies the
-  `--add-opens` / `--add-exports` flags a Swing-based platform needs on modern JDKs.
+- **JDK 21** is used to build and launch (the same JDK SwingBridge needs). The custom
+  `warehousepro.conf` supplies the `--add-opens` / `--add-exports` flags a Swing-based
+  platform needs on modern JDKs, plus `-Djava.security.manager=allow`: the platform
+  installs a Security Manager at startup, which JDK 21 refuses without it and JDK 24+
+  no longer supports at all.
 - The platform cluster (`org.netbeans.cluster:platform:RELEASE250`) downloads from
   Maven Central on first build (cached thereafter).
-- This edition intentionally omits the Vaadin **SwingBridge** `@ExposedMethod`
-  plumbing that the Swing edition carries — that is migration-demo infrastructure,
-  not part of the WarehousePro application spec. Bridging the NetBeans RCP app would
-  be a natural follow-up.
+- The module carries no SwingBridge code; the only bridge hook is `-Dwarehouse.bridge=true`,
+  which makes `DatabaseStartup` skip the desktop login (set by `vaadin-app` in views mode).
+- Besides the NBM, `warehouse/` attaches a plain **`domain` classifier jar** (`AppSession`,
+  `config`, `model`, `dao`, `service`, `seed`, `persistence.xml`) without the
+  `OpenIDE-Module` manifest, for `vaadin-app`'s own login and native dashboard. The module
+  jar itself must not go on the host classpath: the embedded platform would load it as a
+  duplicate module and reject the real one.
 ```

@@ -1,100 +1,87 @@
-# Overview
-This minimal skeleton provides an example of using **Vaadin Swing Bridge** technology that runs existing Swing applications within a **Vaadin** to make them accessible for the end users through the web in no time.
+# vaadin-app — Vaadin host that bridges the **NetBeans RCP** app
 
-This project uses maven for managing the dependencies and configurations.
-Similar to any other Vaadin projects, you can run it from commandline `mvn clean spring-boot:run`.
-For further instructions of building for productions, please refer to the [Production Build](#production-build) section.
+Embeds the **NetBeans Platform (RCP)** edition of WarehousePro
+([`netbeans-app`](../netbeans-app)) in the browser using the Vaadin Swing Bridge's
+`NetBeansRcpBridge` (SwingBridge **1.3.0**). The plain-Swing counterpart lives on the
+`main` branch.
 
-For making the initial setup straightforward, Vaadin Swing Bridge runtime assumes some configurations are in place. 
-These configurations are mostly about where the Swing application's jar file(s) and dependencies are located. 
-Please refer to the [Important Directories](#important-directories) to make sure you have a smooth experience. :+1:
+Docs: <https://vaadin.com/docs/latest/tools/modernization-toolkit/swing-bridge/netbeans-rcp>
 
-## Important Directories:
+## How it works
 
-### applibs
-This is the directory that is automatically being scanned for the jar files of the Swing App. 
-Swing application packaging models can differ from exporting one fat jar, to having a light main jar plus its dependencies right next to it, or loaded at runtime in some way.
-In any case, all the jar files should be in this directory so that they are available to the Swing Bridge runtime.
+`com.vaadin.swingbridge.NetBeansRcpBridge` boots a **pre-built NetBeans Platform
+distribution** server-side, in an isolated classloader / thread group / AWT
+`AppContext` per Vaadin session, and streams it to the browser — without changing
+the RCP source. It offers two modes, both used here:
 
-> **_NOTE:_**  The `applibs` name of this directory is important and case-sensitive.
-If you wish to change it, you can pass the path to such a directory that contains all the jar files by passing `-Dapplibs.dir` from commandline.
-It is also possible to configure this in the `pom.xml`. There is a commented placeholder for this in the `<systemPropertyVariables>` section of the `pom.xml`.
+- `new NetBeansRcpBridge()` — the **full platform shell** (menu, toolbar, all docked windows).
+- `new NetBeansRcpBridge().embedTopComponent("ProductsTopComponent")` — a **single TopComponent**, no shell, so it drops into a Vaadin route.
 
-### swing-bridge-repo
-This is the local maven repository for necessary libraries which are not publicly available in any repositories.
+The distribution is discovered via `-Dswingbridge.rcp.cluster.dir=<abs path>`
+(pointing at `applibs/warehousepro`, which must contain `etc/<branding>.clusters`
+and `platform/lib/boot.jar`).
 
-## How to Run
-The `pom.xml` is configured with necessary command-line arguments and configurations, so you can run it in development mode simply by running:
-```
-mvn clean spring-boot:run
-```
+## Stages
 
-## Production Build
-Also, similar to any spring-boot Vaadin application, it is possible to build it using:
-```
-mvn clean package
-```
+| Route | What | Bridge |
+|---|---|---|
+| `/` | **Stage 1** — entire unchanged NetBeans RCP shell in the browser | `new NetBeansRcpBridge()` |
+| `/dashboard`, `/products`, `/suppliers`, `/orders`, `/stock` | **Stage 2** — Vaadin shell (AppLayout + SideNav) hosting one bridged `TopComponent` each | `.embedTopComponent("…TopComponent")` |
+| `/dashboard-modern` | **Stage 4** — native Vaadin dashboard, no bridge, over the same H2 data | — (reads `DashboardService`) |
 
-and the result is a Spring-Boot fat jar that can be run with the commands below.
-The `<MAVEN_REPO>` placeholder refers to your local Maven repository path:
-- **Linux/macOS**: `$HOME/.m2/repository` (do **not** use `~` as it won't expand inside JVM flags like `-Xbootclasspath/a:`)
-- **Windows**: `C:\Users\<your-username>\.m2\repository`
+Two-way interop (Stage 3) is omitted — the RCP bridge has no `@ExposedMethod`
+equivalent.
 
-If you have a custom repository location, you can find the exact path by running:
-```
-mvn help:evaluate -Dexpression=settings.localRepository -q -DforceStdout
-```
+### Mode
 
-**Linux/macOS:**
+The full shell and per-`TopComponent` bridges must not be mixed in one Vaadin
+session (single-TopComponent mode hides the platform main window the shell needs).
+`warehouse.rcp.mode` in `application.properties` picks one:
+
+| Mode | Active routes | Login |
+|---|---|---|
+| `full` (default) | `/` — the unchanged RCP shell | The RCP's own desktop login dialog |
+| `views` | `/dashboard`, `/products`, … in the Vaadin shell | Vaadin `LoginView`; the RCP skips its login |
+
+All routes stay registered: in `views` mode `/` forwards to `/dashboard`; in `full`
+mode the TopComponent routes show a placeholder.
+`/dashboard-modern` works in both. `com.example.rcp.RcpMode` holds the mode and sets
+`-Dwarehouse.bridge` for the RCP's `@OnStart` (`netbeans-app/.../startup/DatabaseStartup`),
+which skips the desktop login and auto-signs-in when it's `true`. Host and RCP share
+the same H2 file (`jdbc:h2:./warehousedb;AUTO_SERVER=TRUE`).
+
+## Requirements
+
+- **JDK 21** — NetBeans Platform 25 + `-Djava.security.manager=allow` (JDK 24+ would
+  need an RCP variant without `TopSecurityManager`).
+- A valid SwingBridge license (same as `vaadin-app`).
+- The base SwingBridge runtime flags (`--patch-module`, `-Xbootclasspath/a`, the
+  `--add-exports`/`--add-opens` set) **plus** the RCP extras
+  (`--add-opens=java.base/java.lang|java.net|java.security`,
+  `--add-opens=java.desktop/javax.swing[.text]`, `-Djava.security.manager=allow`) —
+  all configured in `spring-boot-maven-plugin`'s `<jvmArguments>`.
+
+## Build & run
+
 ```bash
-java \
-  --patch-module java.desktop=<MAVEN_REPO>/com/vaadin/swing-bridge-patch/1.0.0/swing-bridge-patch-1.0.0.jar \
-  -Xbootclasspath/a:<MAVEN_REPO>/com/vaadin/swing-bridge-graphics/1.0.0/swing-bridge-graphics-1.0.0.jar \
-  --add-reads java.desktop=ALL-UNNAMED \
-  --add-exports=java.desktop/sun.font=ALL-UNNAMED \
-  --add-exports=java.desktop/sun.awt=ALL-UNNAMED \
-  --add-exports=java.desktop/sun.awt.dnd=ALL-UNNAMED \
-  --add-exports=java.desktop/sun.awt.dnd.peer=ALL-UNNAMED \
-  --add-exports=java.base/sun.nio.cs=ALL-UNNAMED \
-  --add-exports=java.desktop/sun.java2d=ALL-UNNAMED \
-  --add-exports=java.desktop/sun.java2d.pipe=ALL-UNNAMED \
-  --add-exports=java.desktop/sun.awt.datatransfer=ALL-UNNAMED \
-  --add-exports=java.desktop/sun.awt.image=ALL-UNNAMED \
-  --add-exports=java.desktop/java.awt.peer=ALL-UNNAMED \
-  --add-exports=java.desktop/java.awt.dnd=ALL-UNNAMED \
-  --add-exports=java.desktop/java.awt.dnd.peer=ALL-UNNAMED \
-  --add-exports=java.desktop/sun.print=ALL-UNNAMED \
-  --add-exports=java.desktop/sun.swing=ALL-UNNAMED \
-  --add-opens=java.desktop/java.awt.event=ALL-UNNAMED \
-  --add-opens=java.desktop/sun.awt=ALL-UNNAMED \
-  -Djava.awt.headless=false \
-  -Dapplibs.dir=./applibs \
-  -jar target/skeleton-starter-vaadin-swing-bridge-1.0-SNAPSHOT.jar
+../start-vaadin.sh          # mode from application.properties (full by default)
+../start-vaadin.sh views    # override: views mode
 ```
 
-**Windows (Command Prompt):**
-```cmd
-java ^
-  --patch-module java.desktop=<MAVEN_REPO>\com\vaadin\swing-bridge-patch\1.0.0\swing-bridge-patch-1.0.0.jar ^
-  -Xbootclasspath/a:<MAVEN_REPO>\com\vaadin\swing-bridge-graphics\1.0.0\swing-bridge-graphics-1.0.0.jar ^
-  --add-reads java.desktop=ALL-UNNAMED ^
-  --add-exports=java.desktop/sun.font=ALL-UNNAMED ^
-  --add-exports=java.desktop/sun.awt=ALL-UNNAMED ^
-  --add-exports=java.desktop/sun.awt.dnd=ALL-UNNAMED ^
-  --add-exports=java.desktop/sun.awt.dnd.peer=ALL-UNNAMED ^
-  --add-exports=java.base/sun.nio.cs=ALL-UNNAMED ^
-  --add-exports=java.desktop/sun.java2d=ALL-UNNAMED ^
-  --add-exports=java.desktop/sun.java2d.pipe=ALL-UNNAMED ^
-  --add-exports=java.desktop/sun.awt.datatransfer=ALL-UNNAMED ^
-  --add-exports=java.desktop/sun.awt.image=ALL-UNNAMED ^
-  --add-exports=java.desktop/java.awt.peer=ALL-UNNAMED ^
-  --add-exports=java.desktop/java.awt.dnd=ALL-UNNAMED ^
-  --add-exports=java.desktop/java.awt.dnd.peer=ALL-UNNAMED ^
-  --add-exports=java.desktop/sun.print=ALL-UNNAMED ^
-  --add-exports=java.desktop/sun.swing=ALL-UNNAMED ^
-  --add-opens=java.desktop/java.awt.event=ALL-UNNAMED ^
-  --add-opens=java.desktop/sun.awt=ALL-UNNAMED ^
-  -Djava.awt.headless=false ^
-  -Dapplibs.dir=.\applibs ^
-  -jar target\skeleton-starter-vaadin-swing-bridge-1.0-SNAPSHOT.jar
-```
+It builds `netbeans-app` with `mvn install` (which also installs the module's plain
+**`domain` jar** this host depends on — see below), copies the RCP **distribution**
+into `vaadin-app/applibs/warehousepro/` (git-ignored), then starts the host. Open
+`http://localhost:8888`. Login: `admin / admin` or `manager / manager` (in the RCP
+dialog in `full` mode, the Vaadin login in `views` mode).
+
+> The first session has a ~5–8 s cold-start while the platform initialises;
+> later sessions reuse the warmed platform.
+
+### Domain jar
+
+The host's own login and native dashboard use the RCP's domain layer through
+`com.example:warehouse:3.5.0:domain`, with **all transitive dependencies excluded**
+(Hibernate/H2 are declared directly). Nothing carrying an `OpenIDE-Module` manifest —
+the module jar or the `org-openide-*` API jars — may be on the host classpath: the
+embedded platform picks those up as duplicate modules (`DuplicateException`) and
+rejects the real ones, so `@OnStart` never runs and the shell stays empty.

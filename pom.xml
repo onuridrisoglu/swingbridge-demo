@@ -11,10 +11,11 @@
     <name>WarehousePro Demo</name>
 
     <modules>
-        <module>swing-app</module>
-        <module>vaadin-app</module>
-        <!-- NetBeans Platform (RCP) edition. Heavier: first build downloads the
-             NetBeans platform cluster. Build it alone with: mvn -pl netbeans-app -am -->
+        <!-- NetBeans Platform (RCP) edition. First build downloads the platform cluster.
+             Installs the "domain" jar that vaadin-app depends on, so it comes first. -->
         <module>netbeans-app</module>
+        <!-- Vaadin host embedding the RCP. Builds without the RCP distribution; it's
+             only needed at runtime in vaadin-app/applibs/ (see start-vaadin.sh). -->
+        <module>vaadin-app</module>
     </modules>
 </project>

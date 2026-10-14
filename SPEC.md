@@ -16,9 +16,10 @@ Designed as the **"before"** state in a Swing → Vaadin migration demo.
 | Packaging | Fat JAR via Maven Shade Plugin |
 
 ## Running the App
-```bash
-./start-swing.sh
-```
+This spec describes the original Swing edition, which lives on the `main` branch
+(`./start-swing.sh` there). On this branch the same app is rebuilt on the NetBeans
+Platform — run it with `./start-netbeans.sh`.
+
 Login: `admin / admin` or `manager / manager`
 
 ---
