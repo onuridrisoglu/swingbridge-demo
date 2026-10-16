@@ -49,8 +49,8 @@ warehouse-demo/
 │           ├── suppliers/SuppliersPanel.java, SupplierDialog.java
 │           ├── orders/PurchaseOrdersPanel.java, PurchaseOrderDialog.java
 │           └── stock/StockMovementsPanel.java
-└── vaadin-app/                ← Vaadin 25.2 Spring Boot host (Aura theme)
-    ├── pom.xml                ← Java 21, Spring Boot 4.1, Vaadin 25.2, Aura theme
+└── vaadin-app/                ← Vaadin 25.3 Spring Boot host (Aura theme)
+    ├── pom.xml                ← Java 21, Spring Boot 4.1, Vaadin 25.3, Aura theme
     ├── applibs/               ← warehouse-swing-app-3.5.0.jar (copied by the start scripts)
     └── src/main/java/com/example/
         ├── Application.java          ← @SpringBootApplication, @Push, Aura stylesheet
@@ -101,8 +101,8 @@ To reset data: delete `warehousedb.mv.db` in the relevant app directory and rest
 | Charts | JFreeChart 1.5.4 (Swing) / Vaadin Charts (Vaadin) |
 | ORM | Hibernate 6.4 / jakarta.persistence |
 | Database | H2 embedded (file-based, no setup needed) |
-| Vaadin | 25.2, Aura theme, Spring Boot 4.1 |
-| Swing Bridge | 1.2.2 |
+| Vaadin | 25.3, Aura theme, Spring Boot 4.1 |
+| Swing Bridge | 1.3.0 |
 | Build | Maven 3.x |
 | Java | swing-app 17, vaadin-app 21 |
 

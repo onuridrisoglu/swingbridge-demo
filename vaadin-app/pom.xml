@@ -8,8 +8,8 @@
     
     <properties>
         <maven.compiler.source>21</maven.compiler.source>
-        <vaadin.version>25.2.2</vaadin.version>
-        <swing-bridge.version>1.2.2</swing-bridge.version>
+        <vaadin.version>25.3.0</vaadin.version>
+        <swing-bridge.version>1.3.0</swing-bridge.version>
         <swing-bridge.path>${settings.localRepository}/com/vaadin</swing-bridge.path>
     </properties>
     
